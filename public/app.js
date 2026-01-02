@@ -11,7 +11,26 @@ let currentMode = 'entry';
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
+    registerServiceWorker();
 });
+
+// Register Service Worker for PWA functionality
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+                console.log('Service Worker registered successfully:', registration.scope);
+
+                // Check for updates periodically
+                setInterval(() => {
+                    registration.update();
+                }, 60000); // Check every minute
+            })
+            .catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+    }
+}
 
 function initializeApp() {
     // Theme Toggle
@@ -880,8 +899,14 @@ function initializeTreeMap(groupId) {
     const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
     const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
 
-    // Initialize map
-    treeMap = L.map('treeMap').setView([centerLat, centerLng], 17);
+    // Initialize map with mobile-friendly options
+    treeMap = L.map('treeMap', {
+        tap: true, // Enable tap for mobile
+        tapTolerance: 15, // Larger touch tolerance
+        touchZoom: true, // Enable pinch zoom
+        dragging: true,
+        zoomControl: true
+    }).setView([centerLat, centerLng], 17);
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -905,14 +930,15 @@ function initializeTreeMap(groupId) {
             className: 'tree-marker',
             html: `<div style="
                 background-color: ${color};
-                width: 16px;
-                height: 16px;
+                width: 24px;
+                height: 24px;
                 border-radius: 50%;
-                border: 2px solid #fff;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+                border: 3px solid #fff;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+                cursor: pointer;
             "></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
         });
 
         const marker = L.marker([tree.latitude, tree.longitude], { icon: icon }).addTo(treeMap);
@@ -1372,8 +1398,14 @@ function initializeAuditMap(sectionId) {
     const centerLat = allLats.reduce((a, b) => a + b, 0) / allLats.length;
     const centerLng = allLngs.reduce((a, b) => a + b, 0) / allLngs.length;
 
-    // Initialize map
-    auditMap = L.map('auditMap').setView([centerLat, centerLng], 14);
+    // Initialize map with mobile-friendly options
+    auditMap = L.map('auditMap', {
+        tap: true, // Enable tap for mobile
+        tapTolerance: 15, // Larger touch tolerance
+        touchZoom: true, // Enable pinch zoom
+        dragging: true,
+        zoomControl: true
+    }).setView([centerLat, centerLng], 14);
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

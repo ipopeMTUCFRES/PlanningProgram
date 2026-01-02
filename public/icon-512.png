@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#2c5f2d"/>
+  <g transform="translate(256,256)">
+    <!-- Tree trunk -->
+    <rect x="-20" y="80" width="40" height="100" fill="#4a2511"/>
+    <!-- Tree crown -->
+    <circle cx="0" cy="0" r="120" fill="#52a554"/>
+    <circle cx="-60" cy="-30" r="80" fill="#3a8a3c"/>
+    <circle cx="60" cy="-30" r="80" fill="#3a8a3c"/>
+    <circle cx="0" cy="-80" r="70" fill="#448f46"/>
+  </g>
+  <text x="256" y="460" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">Tree Survey</text>
+</svg>
