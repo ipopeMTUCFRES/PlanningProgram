@@ -87,6 +87,7 @@ function initializeApp() {
     document.getElementById('backToCrewProjectsBtn').addEventListener('click', showCrewProjects);
     document.getElementById('backToCrewSectionsBtn').addEventListener('click', () => showCrewSections(currentProjectId));
     document.getElementById('backToCrewGroupsListBtn').addEventListener('click', () => showCrewGroups(currentSectionId));
+    document.getElementById('saveCrewNotesBtn').addEventListener('click', saveCrewNotes);
     document.getElementById('completeGroupBtn').addEventListener('click', handleCompleteGroup);
 
     // Audit Mode
@@ -538,6 +539,24 @@ function resetGroupForm() {
     document.querySelectorAll('input[name="cuttingEquipment"]').forEach(cb => cb.checked = false);
     document.querySelectorAll('input[name="cleanupEquipment"]').forEach(cb => cb.checked = false);
     document.querySelectorAll('input[name="customerNotification"]').forEach(cb => cb.checked = false);
+
+    // Auto-fill circuit and section numbers from the most recent group in the same section
+    if (currentSectionId) {
+        const sectionGroups = groups.filter(g => g.section_id === currentSectionId);
+        if (sectionGroups.length > 0) {
+            // Sort by ID to get the most recent group
+            sectionGroups.sort((a, b) => b.id - a.id);
+            const lastGroup = sectionGroups[0];
+
+            // Auto-fill circuit and section numbers
+            if (lastGroup.circuit_number) {
+                document.getElementById('circuitNumber').value = lastGroup.circuit_number;
+            }
+            if (lastGroup.section_number) {
+                document.getElementById('sectionNumber').value = lastGroup.section_number;
+            }
+        }
+    }
 }
 
 function populateGroupForm(group) {
@@ -618,6 +637,7 @@ async function handleTreeSubmit(e) {
         tree_type: document.getElementById('treeType').value,
         action: document.getElementById('action').value,
         health_condition: document.getElementById('healthCondition').value,
+        canopy_removal: document.getElementById('canopyRemoval').checked,
         notes: document.getElementById('notes').value
     };
 
@@ -685,6 +705,7 @@ function editTree(id) {
     document.getElementById('treeType').value = tree.tree_type || '';
     document.getElementById('action').value = tree.action || '';
     document.getElementById('healthCondition').value = tree.health_condition || '';
+    document.getElementById('canopyRemoval').checked = tree.canopy_removal || false;
     document.getElementById('notes').value = tree.notes || '';
 
     // Update UI for edit mode
@@ -858,12 +879,14 @@ function renderTreesForGroup(groupId) {
 
     container.innerHTML = groupTrees.map(tree => {
         const actionBadge = tree.action ? `<span class="badge badge-${tree.action}">${tree.action.toUpperCase()}</span>` : '';
+        const canopyBadge = tree.canopy_removal ? `<span class="badge" style="background: #8B4513; color: white;">CANOPY-REMOVAL</span>` : '';
 
         return `
             <div class="item-card">
                 <h3>
                     Tree #${tree.id} - ${tree.species || 'Unidentified'}
                     ${actionBadge}
+                    ${canopyBadge}
                 </h3>
                 <div class="item-details">
                     <div class="detail-item">
@@ -1136,6 +1159,9 @@ function showCrewWork(groupId) {
         ${group.cutting_equipment && group.cutting_equipment.length > 0 ? `<div class="detail-item"><strong>Equipment:</strong> ${group.cutting_equipment.join(', ')}</div>` : ''}
     `;
 
+    // Load crew notes
+    document.getElementById('crewNotes').value = group.crew_notes || '';
+
     renderCrewTreesList(groupId);
 }
 
@@ -1151,12 +1177,14 @@ function renderCrewTreesList(groupId) {
     container.innerHTML = groupTrees.map(tree => {
         const isCompleted = tree.completed || false;
         const actionBadge = tree.action ? `<span class="badge badge-${tree.action}">${tree.action.toUpperCase()}</span>` : '';
+        const canopyBadge = tree.canopy_removal ? `<span class="badge" style="background: #8B4513; color: white;">CANOPY-REMOVAL</span>` : '';
 
         return `
             <div class="item-card" style="${isCompleted ? 'opacity: 0.6;' : ''}">
                 <h3>
                     Tree #${tree.id} - ${tree.species || 'Unidentified'}
                     ${actionBadge}
+                    ${canopyBadge}
                     ${isCompleted ? '<span class="badge" style="background: #22cc22; color: white;">✓ DONE</span>' : ''}
                 </h3>
                 <div class="item-details">
@@ -1166,7 +1194,13 @@ function renderCrewTreesList(groupId) {
                     ${tree.notes ? `<div class="detail-item"><strong>Notes:</strong> ${tree.notes}</div>` : ''}
                 </div>
                 <div class="item-actions">
-                    ${!isCompleted ? `<button class="btn btn-primary" onclick="markTreeCompleted(${tree.id})">Mark as Completed</button>` : '<span style="color: #22cc22; font-weight: bold;">Completed</span>'}
+                    ${!isCompleted ?
+                        `<button class="btn btn-primary" onclick="markTreeCompleted(${tree.id})">Mark as Completed</button>` :
+                        `<div style="display: flex; gap: 10px; align-items: center;">
+                            <span style="color: #22cc22; font-weight: bold;">Completed</span>
+                            <button class="btn btn-secondary" onclick="reopenTree(${tree.id})">Reopen Tree</button>
+                        </div>`
+                    }
                 </div>
             </div>
         `;
@@ -1202,6 +1236,76 @@ async function markTreeCompleted(treeId) {
         if (tree) tree.completed = false;
         renderCrewTreesList(currentGroupId);
         alert('Error marking tree as completed');
+    }
+}
+
+async function reopenTree(treeId) {
+    try {
+        const tree = trees.find(t => t.id === treeId);
+        if (!tree) return;
+
+        // Update locally first for instant UI feedback
+        tree.completed = false;
+        renderCrewTreesList(currentGroupId);
+
+        // Then save to server in background
+        const response = await fetch(`/api/trees/${treeId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...tree, completed: false })
+        });
+
+        if (!response.ok) {
+            // Revert on error
+            tree.completed = true;
+            renderCrewTreesList(currentGroupId);
+            alert('Error reopening tree');
+        }
+    } catch (error) {
+        console.error('Error reopening tree:', error);
+        // Revert on error
+        const tree = trees.find(t => t.id === treeId);
+        if (tree) tree.completed = true;
+        renderCrewTreesList(currentGroupId);
+        alert('Error reopening tree');
+    }
+}
+
+async function saveCrewNotes() {
+    if (!currentGroupId) return;
+
+    const group = groups.find(g => g.id === currentGroupId);
+    if (!group) return;
+
+    const crewNotes = document.getElementById('crewNotes').value;
+
+    try {
+        // Update locally first
+        group.crew_notes = crewNotes;
+
+        // Save to server
+        const response = await fetch(`/api/groups/${currentGroupId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(group)
+        });
+
+        if (response.ok) {
+            // Show success feedback
+            const saveBtn = document.getElementById('saveCrewNotesBtn');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '✓ Saved';
+            saveBtn.style.background = '#22cc22';
+            setTimeout(() => {
+                saveBtn.textContent = originalText;
+                saveBtn.style.background = '';
+            }, 2000);
+        } else {
+            alert('Error saving crew notes');
+        }
+    } catch (error) {
+        console.error('Error saving crew notes:', error);
+        alert('Error saving crew notes');
     }
 }
 
