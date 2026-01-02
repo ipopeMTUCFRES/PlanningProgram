@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tree-survey-v1';
+const CACHE_NAME = 'tree-survey-v2';
 const urlsToCache = [
   '/',
   '/index.html',
