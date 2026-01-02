@@ -474,6 +474,7 @@ async function handleGroupSubmit(e) {
         circuit_number: circuitNumber,
         section_number: sectionNumber,
         id_number: idNumber,
+        address: document.getElementById('groupAddress').value,
         comments: document.getElementById('groupComments').value,
         brush_amount: document.getElementById('brushAmount').value,
         cutting_equipment: cuttingEquipment,
@@ -544,6 +545,7 @@ function populateGroupForm(group) {
     document.getElementById('circuitNumber').value = group.circuit_number;
     document.getElementById('sectionNumber').value = group.section_number || '';
     document.getElementById('idNumber').value = group.id_number || '';
+    document.getElementById('groupAddress').value = group.address || '';
     document.getElementById('groupComments').value = group.comments || group.description || '';
     document.getElementById('brushAmount').value = group.brush_amount || '';
 
@@ -631,11 +633,20 @@ async function handleTreeSubmit(e) {
         });
 
         if (response.ok) {
+            const savedTree = await response.json();
+
+            // Update locally for instant feedback
+            if (treeId) {
+                const index = trees.findIndex(t => t.id == treeId);
+                if (index !== -1) trees[index] = savedTree;
+            } else {
+                trees.push(savedTree);
+            }
+
             resetTreeForm();
-            await loadTrees();
             renderTreesForGroup(currentGroupId);
             initializeTreeMap(currentGroupId);
-            alert(treeId ? 'Tree updated successfully!' : 'Tree recorded successfully!');
+            // Removed alert for faster UX
         }
     } catch (error) {
         console.error('Error saving tree:', error);
@@ -1167,18 +1178,29 @@ async function markTreeCompleted(treeId) {
         const tree = trees.find(t => t.id === treeId);
         if (!tree) return;
 
+        // Update locally first for instant UI feedback
+        tree.completed = true;
+        renderCrewTreesList(currentGroupId);
+
+        // Then save to server in background
         const response = await fetch(`/api/trees/${treeId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...tree, completed: true })
         });
 
-        if (response.ok) {
-            await loadTrees();
+        if (!response.ok) {
+            // Revert on error
+            tree.completed = false;
             renderCrewTreesList(currentGroupId);
+            alert('Error marking tree as completed');
         }
     } catch (error) {
         console.error('Error marking tree as completed:', error);
+        // Revert on error
+        const tree = trees.find(t => t.id === treeId);
+        if (tree) tree.completed = false;
+        renderCrewTreesList(currentGroupId);
         alert('Error marking tree as completed');
     }
 }
