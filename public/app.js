@@ -44,6 +44,7 @@ function initializeApp() {
     document.getElementById('createNewSectionBtn').addEventListener('click', () => showSectionDetail(null));
     document.getElementById('backToSectionsBtn').addEventListener('click', () => showProjectDetail(currentProjectId));
     document.getElementById('sectionForm').addEventListener('submit', handleSectionSubmit);
+    document.getElementById('exportSectionBtn').addEventListener('click', exportSectionToExcel);
     document.getElementById('deleteSectionBtn').addEventListener('click', handleDeleteSection);
 
     // Groups
@@ -236,6 +237,7 @@ function showSectionDetail(sectionId) {
         if (section) {
             document.getElementById('sectionDetailTitle').textContent = `Edit Section: ${section.name}`;
             populateSectionForm(section);
+            document.getElementById('exportSectionBtn').style.display = 'inline-block';
             document.getElementById('deleteSectionBtn').style.display = 'inline-block';
             document.getElementById('groupsListSection').style.display = 'block';
             renderGroupsForSection(sectionId);
@@ -243,6 +245,7 @@ function showSectionDetail(sectionId) {
     } else {
         document.getElementById('sectionDetailTitle').textContent = 'Create New Section';
         resetSectionForm();
+        document.getElementById('exportSectionBtn').style.display = 'none';
         document.getElementById('deleteSectionBtn').style.display = 'none';
         document.getElementById('groupsListSection').style.display = 'none';
     }
@@ -324,6 +327,69 @@ function populateSectionForm(section) {
     document.getElementById('sectionId').value = section.id;
     document.getElementById('sectionName').value = section.name;
     document.getElementById('sectionDescription').value = section.description || '';
+}
+
+function exportSectionToExcel() {
+    if (!currentSectionId) {
+        alert('Please save the section first before exporting');
+        return;
+    }
+
+    const section = sections.find(s => s.id === currentSectionId);
+    if (!section) return;
+
+    const project = projects.find(p => p.id === section.project_id);
+    const sectionGroups = groups.filter(g => g.section_id === currentSectionId);
+
+    // Create CSV content
+    let csv = '';
+
+    // Add header with project and section info
+    csv += `Project:,${project ? project.name : 'Unknown'}\n`;
+    csv += `Work Type:,${project ? project.work_type : 'Unknown'}\n`;
+    csv += `Section:,${section.name}\n`;
+    csv += `Description:,${section.description || 'N/A'}\n`;
+    csv += `Export Date:,${new Date().toLocaleString()}\n`;
+    csv += '\n';
+
+    // Add tree data headers
+    csv += 'Group Name,Circuit Number,Section Number,ID Number,Brush Amount,';
+    csv += 'Tree Species,Latitude,Longitude,Diameter (in),Tree Type,Action,Health Condition,Notes,Completed\n';
+
+    // Add tree data for each group
+    sectionGroups.forEach(group => {
+        const groupTrees = trees.filter(t => t.group_id === group.id);
+
+        if (groupTrees.length === 0) {
+            // Add group row even if no trees
+            csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${group.brush_amount || ''}",`;
+            csv += ',,,,,,,,\n';
+        } else {
+            groupTrees.forEach(tree => {
+                // Escape quotes in text fields
+                const species = (tree.species || '').replace(/"/g, '""');
+                const notes = (tree.notes || '').replace(/"/g, '""');
+
+                csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${group.brush_amount || ''}",`;
+                csv += `"${species}",${tree.latitude},${tree.longitude},${tree.diameter || ''},`;
+                csv += `"${tree.tree_type || ''}","${tree.action || ''}","${tree.health_condition || ''}","${notes}",${tree.completed ? 'Yes' : 'No'}\n`;
+            });
+        }
+    });
+
+    // Create download link
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    const filename = `${project ? project.name : 'Project'}_${section.name}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename.replace(/[^a-z0-9_\-\.]/gi, '_'));
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // GROUP FUNCTIONS

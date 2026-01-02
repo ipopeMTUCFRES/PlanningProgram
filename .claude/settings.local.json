@@ -15,7 +15,8 @@
       "Bash(git pull:*)",
       "Bash(git checkout:*)",
       "Bash(lsof:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(xargs kill:*)"
     ]
   }
 }
