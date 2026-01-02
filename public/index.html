@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Survey Application</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>Tree Survey Application</h1>
+                <div class="header-controls">
+                    <div class="mode-selector">
+                        <button id="entryModeBtn" class="btn btn-primary mode-btn active">Entry Mode</button>
+                        <button id="crewModeBtn" class="btn btn-secondary mode-btn">Crew Mode</button>
+                        <button id="auditModeBtn" class="btn btn-secondary mode-btn">Audit Mode</button>
+                    </div>
+                    <button id="themeToggle" class="btn btn-secondary">🌙 Dark Mode</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Projects List View -->
+        <main id="projectsListView" class="view active">
+            <section class="list-section">
+                <div class="section-header">
+                    <h2>Projects</h2>
+                    <button id="createNewProjectBtn" class="btn btn-primary">Create New Project</button>
+                </div>
+                <div id="projectsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Project Detail View (shows sections list) -->
+        <main id="projectDetailView" class="view">
+            <div class="back-button-container">
+                <button id="backToProjectsBtn" class="btn btn-secondary">← Back to Projects</button>
+            </div>
+
+            <section class="form-section">
+                <h2 id="projectDetailTitle">Project Details</h2>
+                <form id="projectForm">
+                    <input type="hidden" id="projectId">
+
+                    <div class="form-row two-col">
+                        <div class="form-group">
+                            <label for="projectName">Project Name *</label>
+                            <input type="text" id="projectName" required placeholder="e.g., 2024 Spring Maintenance">
+                        </div>
+                        <div class="form-group">
+                            <label for="workType">Work Type *</label>
+                            <select id="workType" required>
+                                <option value="">Select Work Type</option>
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Repetitive Outage">Repetitive Outage</option>
+                                <option value="Zonal-Clearing">Zonal-Clearing</option>
+                                <option value="First Zone">First Zone</option>
+                                <option value="Construction">Construction</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Save Project</button>
+                        <button type="button" id="deleteProjectBtn" class="btn btn-danger" style="display:none;">Delete Project</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="list-section" id="sectionsListSection" style="display:none;">
+                <div class="section-header">
+                    <h2>Sections in This Project</h2>
+                    <button id="createNewSectionBtn" class="btn btn-primary">Create New Section</button>
+                </div>
+                <div id="sectionsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Section Detail View (shows groups list) -->
+        <main id="sectionDetailView" class="view">
+            <div class="back-button-container">
+                <button id="backToSectionsBtn" class="btn btn-secondary">← Back to Sections</button>
+            </div>
+
+            <section class="form-section">
+                <h2 id="sectionDetailTitle">Section Details</h2>
+                <form id="sectionForm">
+                    <input type="hidden" id="sectionId">
+
+                    <div class="form-row two-col">
+                        <div class="form-group">
+                            <label for="sectionName">Section Name *</label>
+                            <input type="text" id="sectionName" required placeholder="e.g., North Area, Phase 1">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sectionDescription">Description</label>
+                        <textarea id="sectionDescription" rows="3" placeholder="Enter section description..."></textarea>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Save Section</button>
+                        <button type="button" id="deleteSectionBtn" class="btn btn-danger" style="display:none;">Delete Section</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="list-section" id="groupsListSection" style="display:none;">
+                <div class="section-header">
+                    <h2>Groups in This Section</h2>
+                    <button id="createNewGroupBtn" class="btn btn-primary">Create New Group</button>
+                </div>
+                <div id="groupsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Group Detail View (shows group details and trees) -->
+        <main id="groupDetailView" class="view">
+            <div class="back-button-container">
+                <button id="backToGroupsBtn" class="btn btn-secondary">← Back to Groups</button>
+            </div>
+
+            <section class="form-section">
+                <h2 id="groupDetailTitle">Group Details</h2>
+                <form id="groupForm">
+                    <input type="hidden" id="groupId">
+                    <input type="hidden" id="groupName">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="circuitNumber">Circuit Number *</label>
+                            <input type="text" id="circuitNumber" required placeholder="e.g., 1234-56" pattern="\d{4}-\d{2}" title="Format: 4 digits, dash, 2 digits (e.g., 1234-56)">
+                        </div>
+                        <div class="form-group">
+                            <label for="sectionNumber">Section Number *</label>
+                            <input type="text" id="sectionNumber" required placeholder="e.g., A or 1">
+                        </div>
+                        <div class="form-group">
+                            <label for="idNumber">ID Number *</label>
+                            <input type="number" id="idNumber" required placeholder="e.g., 001">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="groupComments">Comments</label>
+                        <textarea id="groupComments" rows="3" placeholder="Enter comments..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="brushAmount">Brush Amount (Quarter Spans)</label>
+                        <input type="number" step="0.1" id="brushAmount" placeholder="e.g., 15.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cutting Equipment</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cuttingEquipment" value="Bucket Truck"> Bucket Truck
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cuttingEquipment" value="Manual"> Manual
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cuttingEquipment" value="Backyard Machine"> Backyard Machine
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cuttingEquipment" value="Side-trimmer"> Side-trimmer
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cuttingEquipment" value="Puddle-jumper"> Puddle-jumper
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cleanup Codes</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cleanupEquipment" value="Chipper"> Chipper
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cleanupEquipment" value="Mower"> Mower
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="cleanupEquipment" value="Windrow"> Windrow
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Customer Notification</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="customerNotification" value="Verbal"> Verbal
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="customerNotification" value="Door-Card"> Door-Card
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="customerNotification" value="Postcard"> Postcard
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Save Group</button>
+                        <button type="button" id="deleteGroupBtn" class="btn btn-danger" style="display:none;">Delete Group</button>
+                        <button type="button" id="createAnotherGroupBtn" class="btn btn-secondary" style="display:none;">Create Another Group</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="form-section" id="treeFormSection" style="display:none;">
+                <h2>Record Trees for This Group</h2>
+                <form id="treeForm">
+                    <div class="form-row two-col">
+                        <div class="form-group">
+                            <label>GPS Location</label>
+                            <button type="button" id="getLocationBtn" class="btn btn-secondary">Get Current Location</button>
+                        </div>
+                    </div>
+
+                    <div class="form-row two-col">
+                        <div class="form-group">
+                            <label for="latitude">Latitude *</label>
+                            <input type="number" step="any" id="latitude" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="longitude">Longitude *</label>
+                            <input type="number" step="any" id="longitude" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row two-col">
+                        <div class="form-group">
+                            <label for="species">Species</label>
+                            <input type="text" id="species" placeholder="e.g., Oak, Maple, Pine">
+                        </div>
+                        <div class="form-group">
+                            <label for="diameter">Diameter (inches)</label>
+                            <input type="number" step="0.1" id="diameter" placeholder="e.g., 24.5">
+                        </div>
+                    </div>
+
+                    <div class="form-row two-col">
+                        <div class="form-group">
+                            <label for="treeType">Tree Type</label>
+                            <select id="treeType">
+                                <option value="">Select Type</option>
+                                <option value="Primary">Primary</option>
+                                <option value="Secondary">Secondary</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="action">Action Required</label>
+                            <select id="action">
+                                <option value="">None</option>
+                                <option value="trim">Trim</option>
+                                <option value="remove">Remove</option>
+                                <option value="hazard">Hazard</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row two-col">
+                        <div class="form-group">
+                            <label for="healthCondition">Health Condition</label>
+                            <select id="healthCondition">
+                                <option value="">Not Assessed</option>
+                                <option value="excellent">Excellent</option>
+                                <option value="good">Good</option>
+                                <option value="fair">Fair</option>
+                                <option value="poor">Poor</option>
+                                <option value="dead">Dead</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" rows="3" placeholder="Additional observations..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Tree</button>
+                </form>
+            </section>
+
+            <section class="form-section" id="treeMapSection" style="display:none;">
+                <h2>Tree Locations Map</h2>
+                <div id="treeMap" style="height: 400px; border: 2px inset #808080;"></div>
+            </section>
+
+            <section class="list-section" id="treesListSection" style="display:none;">
+                <h2>Trees in This Group</h2>
+                <div id="treesList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Crew Mode - Projects View -->
+        <main id="crewProjectsView" class="view">
+            <section class="list-section">
+                <div class="section-header">
+                    <h2>Select Project</h2>
+                </div>
+                <div id="crewProjectsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Crew Mode - Sections View -->
+        <main id="crewSectionsView" class="view">
+            <div class="back-button-container">
+                <button id="backToCrewProjectsBtn" class="btn btn-secondary">← Back to Projects</button>
+            </div>
+            <section class="list-section">
+                <div class="section-header">
+                    <h2 id="crewSectionsTitle">Select Section</h2>
+                </div>
+                <div id="crewSectionsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Crew Mode - Groups View -->
+        <main id="crewGroupsView" class="view">
+            <div class="back-button-container">
+                <button id="backToCrewSectionsBtn" class="btn btn-secondary">← Back to Sections</button>
+            </div>
+            <section class="list-section">
+                <div class="section-header">
+                    <h2 id="crewGroupsTitle">Select Group to Work</h2>
+                </div>
+                <div id="crewGroupsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Crew Work View -->
+        <main id="crewWorkView" class="view">
+            <div class="back-button-container">
+                <button id="backToCrewGroupsListBtn" class="btn btn-secondary">← Back to Groups</button>
+            </div>
+
+            <section class="form-section">
+                <h2 id="crewGroupTitle">Working on Group</h2>
+                <div id="crewGroupInfo" class="item-details" style="margin-bottom: 20px;"></div>
+            </section>
+
+            <section class="list-section">
+                <h2>Trees to Complete</h2>
+                <div id="crewTreesList" class="items-list"></div>
+            </section>
+
+            <section class="form-section">
+                <button id="completeGroupBtn" class="btn btn-primary" style="width: 100%;">Mark Group as Completed</button>
+            </section>
+        </main>
+
+        <!-- Audit Mode - Projects View -->
+        <main id="auditProjectsView" class="view">
+            <section class="list-section">
+                <div class="section-header">
+                    <h2>Select Project to Audit</h2>
+                </div>
+                <div id="auditProjectsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Audit Mode - Sections View -->
+        <main id="auditSectionsView" class="view">
+            <div class="back-button-container">
+                <button id="backToAuditProjectsBtn" class="btn btn-secondary">← Back to Projects</button>
+            </div>
+            <section class="list-section">
+                <div class="section-header">
+                    <h2 id="auditSectionsTitle">Select Section to Audit</h2>
+                </div>
+                <div id="auditSectionsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Audit Mode - Groups View -->
+        <main id="auditGroupsView" class="view">
+            <div class="back-button-container">
+                <button id="backToAuditSectionsBtn" class="btn btn-secondary">← Back to Sections</button>
+            </div>
+
+            <section class="form-section">
+                <h2>Groups Overview Map</h2>
+                <div id="auditMap" style="height: 500px; border: 2px inset #808080;"></div>
+                <div style="margin-top: 15px; padding: 10px; background: #fff; border: 2px inset #808080;">
+                    <strong>Legend:</strong>
+                    <span style="display: inline-block; margin-left: 10px;">
+                        <span style="display: inline-block; width: 16px; height: 16px; background: #22cc22; border: 2px solid #fff; border-radius: 50%; vertical-align: middle;"></span> Completed
+                    </span>
+                    <span style="display: inline-block; margin-left: 10px;">
+                        <span style="display: inline-block; width: 16px; height: 16px; background: #ff9933; border: 2px solid #fff; border-radius: 50%; vertical-align: middle;"></span> In Progress
+                    </span>
+                    <span style="display: inline-block; margin-left: 10px;">
+                        <span style="display: inline-block; width: 16px; height: 16px; background: #cccccc; border: 2px solid #fff; border-radius: 50%; vertical-align: middle;"></span> Not Started
+                    </span>
+                </div>
+            </section>
+
+            <section class="list-section">
+                <div class="section-header">
+                    <h2 id="auditGroupsListTitle">Groups Status</h2>
+                </div>
+                <div id="auditGroupsList" class="items-list"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

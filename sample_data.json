@@ -1,0 +1,70 @@
+{
+  "projects": [
+    {
+      "id": 1,
+      "name": "2024 Spring Maintenance",
+      "work_type": "Maintenance",
+      "created_at": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": 1,
+      "project_id": 1,
+      "name": "North Area",
+      "description": "Northern section of the service area",
+      "created_at": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "section_id": 1,
+      "name": "1234-56-A-001",
+      "circuit_number": "1234-56",
+      "section_number": "A",
+      "id_number": "001",
+      "comments": "High priority area near school",
+      "brush_amount": "15.5",
+      "cutting_equipment": ["Bucket Truck", "Manual"],
+      "cleanup_equipment": ["Chipper"],
+      "customer_notification": ["Door-Card"],
+      "completed": false,
+      "created_at": "2024-01-15T11:00:00.000Z"
+    }
+  ],
+  "trees": [
+    {
+      "id": 1,
+      "group_id": 1,
+      "latitude": 40.7128,
+      "longitude": -74.0060,
+      "species": "Oak",
+      "diameter": 18,
+      "tree_type": "Primary",
+      "action": "trim",
+      "health_condition": "good",
+      "notes": "Overhanging power lines",
+      "completed": false,
+      "created_at": "2024-01-15T11:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "group_id": 1,
+      "latitude": 40.7129,
+      "longitude": -74.0061,
+      "species": "Maple",
+      "diameter": 24,
+      "tree_type": "Primary",
+      "action": "remove",
+      "health_condition": "poor",
+      "notes": "Dead tree, safety hazard",
+      "completed": false,
+      "created_at": "2024-01-15T11:35:00.000Z"
+    }
+  ],
+  "nextProjectId": 2,
+  "nextSectionId": 2,
+  "nextGroupId": 2,
+  "nextTreeId": 3
+}
