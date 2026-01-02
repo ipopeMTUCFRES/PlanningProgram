@@ -53,6 +53,12 @@ function initializeApp() {
         }
     });
 
+    // Excel Upload
+    document.getElementById('uploadExcelBtn').addEventListener('click', () => {
+        document.getElementById('excelFileInput').click();
+    });
+    document.getElementById('excelFileInput').addEventListener('change', handleExcelUpload);
+
     // Projects
     document.getElementById('createNewProjectBtn').addEventListener('click', () => showProjectDetail(null));
     document.getElementById('backToProjectsBtn').addEventListener('click', showProjectsList);
@@ -414,6 +420,214 @@ function exportSectionToExcel() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+async function handleExcelUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Reset file input so the same file can be uploaded again if needed
+    event.target.value = '';
+
+    try {
+        const text = await file.text();
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+
+        if (lines.length < 2) {
+            alert('The uploaded file appears to be empty or invalid.');
+            return;
+        }
+
+        // Parse CSV header
+        const headerLine = lines[0];
+        const expectedHeader = 'Group Name,Circuit Number,Section Number,ID Number,Address,Brush Amount,Crew Notes,Tree Number,Tree Species,Latitude,Longitude,Diameter (in),Tree Type,Action,Health Condition,Canopy Removal,Notes,Completed';
+
+        // Check if header matches (allowing for some flexibility with quotes)
+        const normalizedHeader = headerLine.replace(/"/g, '');
+        const normalizedExpected = expectedHeader.replace(/"/g, '');
+
+        if (!normalizedHeader.includes('Group Name') || !normalizedHeader.includes('Tree Number')) {
+            alert('Invalid file format. Please upload a CSV file exported from this application.\n\nExpected columns:\n' + expectedHeader);
+            return;
+        }
+
+        // Ask user to select project and section
+        const projectName = prompt('Enter the Project Name for this import:');
+        if (!projectName) return;
+
+        const workType = prompt('Enter the Work Type (e.g., Maintenance, Construction, Survey):', 'Maintenance');
+        if (!workType) return;
+
+        const sectionName = prompt('Enter the Section Name for this import:');
+        if (!sectionName) return;
+
+        // Create project
+        const projectResponse = await fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: projectName,
+                work_type: workType,
+                description: `Imported from Excel on ${new Date().toLocaleString()}`
+            })
+        });
+
+        if (!projectResponse.ok) {
+            alert('Error creating project');
+            return;
+        }
+
+        const project = await projectResponse.json();
+
+        // Create section
+        const sectionResponse = await fetch('/api/sections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: project.id,
+                name: sectionName,
+                description: `Imported from Excel on ${new Date().toLocaleString()}`
+            })
+        });
+
+        if (!sectionResponse.ok) {
+            alert('Error creating section');
+            return;
+        }
+
+        const section = await sectionResponse.json();
+
+        // Parse data rows
+        const groupsMap = new Map(); // Key: group identifier, Value: group object
+        let importedGroups = 0;
+        let importedTrees = 0;
+        let skippedRows = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line) continue;
+
+            // Parse CSV line (handle quoted fields)
+            const fields = parseCSVLine(line);
+
+            if (fields.length < 17) {
+                skippedRows++;
+                continue;
+            }
+
+            const [groupName, circuitNumber, sectionNumber, idNumber, address, brushAmount, crewNotes,
+                   treeNumber, species, latitude, longitude, diameter, treeType, action, healthCondition, canopyRemoval, notes, completed] = fields;
+
+            // Create or get group
+            const groupKey = `${circuitNumber}-${sectionNumber}-${idNumber}`;
+            let group = groupsMap.get(groupKey);
+
+            if (!group) {
+                // Create new group
+                const groupResponse = await fetch('/api/groups', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        section_id: section.id,
+                        name: groupName || groupKey,
+                        circuit_number: circuitNumber,
+                        section_number: sectionNumber,
+                        id_number: idNumber,
+                        address: address,
+                        brush_amount: brushAmount,
+                        crew_notes: crewNotes,
+                        cutting_equipment: [],
+                        cleanup_equipment: [],
+                        customer_notification: []
+                    })
+                });
+
+                if (groupResponse.ok) {
+                    group = await groupResponse.json();
+                    groupsMap.set(groupKey, group);
+                    importedGroups++;
+                } else {
+                    skippedRows++;
+                    continue;
+                }
+            }
+
+            // Create tree if data exists
+            if (latitude && longitude) {
+                const treeResponse = await fetch('/api/trees', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        group_id: group.id,
+                        latitude: parseFloat(latitude),
+                        longitude: parseFloat(longitude),
+                        species: species,
+                        diameter: diameter ? parseFloat(diameter) : null,
+                        tree_type: treeType,
+                        action: action,
+                        health_condition: healthCondition,
+                        canopy_removal: canopyRemoval && canopyRemoval.toLowerCase() === 'yes',
+                        notes: notes,
+                        completed: completed && completed.toLowerCase() === 'yes'
+                    })
+                });
+
+                if (treeResponse.ok) {
+                    importedTrees++;
+                } else {
+                    skippedRows++;
+                }
+            }
+        }
+
+        // Reload data
+        await loadProjects();
+        await loadSections();
+        await loadGroups();
+        await loadTrees();
+
+        alert(`Import completed!\n\nImported:\n- 1 Project\n- 1 Section\n- ${importedGroups} Groups\n- ${importedTrees} Trees\n\nSkipped rows: ${skippedRows}`);
+
+        // Show the imported project
+        showProjectDetail(project.id);
+
+    } catch (error) {
+        console.error('Error importing Excel file:', error);
+        alert('Error importing file. Please ensure the file format is correct.');
+    }
+}
+
+function parseCSVLine(line) {
+    const fields = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+
+        if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+                // Escaped quote
+                current += '"';
+                i++; // Skip next quote
+            } else {
+                // Toggle quote mode
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            // Field separator
+            fields.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+
+    // Add last field
+    fields.push(current.trim());
+
+    return fields;
 }
 
 // GROUP FUNCTIONS
