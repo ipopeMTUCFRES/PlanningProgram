@@ -56,6 +56,7 @@ function initializeApp() {
     // Trees
     document.getElementById('treeForm').addEventListener('submit', handleTreeSubmit);
     document.getElementById('getLocationBtn').addEventListener('click', getCurrentLocation);
+    document.getElementById('cancelEditTreeBtn').addEventListener('click', cancelEditTree);
 
     // Mode Switching
     document.getElementById('entryModeBtn').addEventListener('click', () => switchMode('entry'));
@@ -533,19 +534,23 @@ async function handleTreeSubmit(e) {
         notes: document.getElementById('notes').value
     };
 
+    const treeId = document.getElementById('treeId').value;
+    const url = treeId ? `/api/trees/${treeId}` : '/api/trees';
+    const method = treeId ? 'PUT' : 'POST';
+
     try {
-        const response = await fetch('/api/trees', {
-            method: 'POST',
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(treeData)
         });
 
         if (response.ok) {
-            document.getElementById('treeForm').reset();
+            resetTreeForm();
             await loadTrees();
             renderTreesForGroup(currentGroupId);
             initializeTreeMap(currentGroupId);
-            alert('Tree recorded successfully!');
+            alert(treeId ? 'Tree updated successfully!' : 'Tree recorded successfully!');
         }
     } catch (error) {
         console.error('Error saving tree:', error);
@@ -569,6 +574,42 @@ async function deleteTree(id) {
         console.error('Error deleting tree:', error);
         alert('Error deleting tree');
     }
+}
+
+function editTree(id) {
+    const tree = trees.find(t => t.id === id);
+    if (!tree) return;
+
+    // Populate the form with tree data
+    document.getElementById('treeId').value = tree.id;
+    document.getElementById('latitude').value = tree.latitude;
+    document.getElementById('longitude').value = tree.longitude;
+    document.getElementById('species').value = tree.species || '';
+    document.getElementById('diameter').value = tree.diameter || '';
+    document.getElementById('treeType').value = tree.tree_type || '';
+    document.getElementById('action').value = tree.action || '';
+    document.getElementById('healthCondition').value = tree.health_condition || '';
+    document.getElementById('notes').value = tree.notes || '';
+
+    // Update UI for edit mode
+    document.getElementById('treeFormTitle').textContent = 'Edit Tree';
+    document.getElementById('saveTreeBtn').textContent = 'Update Tree';
+    document.getElementById('cancelEditTreeBtn').style.display = 'inline-block';
+
+    // Scroll to form
+    document.getElementById('treeFormSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditTree() {
+    resetTreeForm();
+}
+
+function resetTreeForm() {
+    document.getElementById('treeForm').reset();
+    document.getElementById('treeId').value = '';
+    document.getElementById('treeFormTitle').textContent = 'Record Trees for This Group';
+    document.getElementById('saveTreeBtn').textContent = 'Save Tree';
+    document.getElementById('cancelEditTreeBtn').style.display = 'none';
 }
 
 // DATA LOADING
@@ -743,6 +784,7 @@ function renderTreesForGroup(groupId) {
                     <div class="detail-item"><strong>Recorded:</strong> ${new Date(tree.created_at).toLocaleString()}</div>
                 </div>
                 <div class="item-actions">
+                    <button class="btn btn-secondary" onclick="editTree(${tree.id})">Edit</button>
                     <button class="btn btn-danger" onclick="deleteTree(${tree.id})">Delete</button>
                 </div>
             </div>
