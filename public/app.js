@@ -373,26 +373,30 @@ function exportSectionToExcel() {
     csv += '\n';
 
     // Add tree data headers
-    csv += 'Group Name,Circuit Number,Section Number,ID Number,Brush Amount,';
-    csv += 'Tree Number,Tree Species,Latitude,Longitude,Diameter (in),Tree Type,Action,Health Condition,Notes,Completed\n';
+    csv += 'Group Name,Circuit Number,Section Number,ID Number,Address,Brush Amount,Crew Notes,';
+    csv += 'Tree Number,Tree Species,Latitude,Longitude,Diameter (in),Tree Type,Action,Health Condition,Canopy Removal,Notes,Completed\n';
 
     // Add tree data for each group
     sectionGroups.forEach(group => {
         const groupTrees = trees.filter(t => t.group_id === group.id);
 
+        // Escape quotes in group text fields
+        const groupAddress = (group.address || '').replace(/"/g, '""');
+        const crewNotes = (group.crew_notes || '').replace(/"/g, '""');
+
         if (groupTrees.length === 0) {
             // Add group row even if no trees
-            csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${group.brush_amount || ''}",`;
-            csv += ',,,,,,,,,\n';
+            csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${groupAddress}","${group.brush_amount || ''}","${crewNotes}",`;
+            csv += ',,,,,,,,,,\n';
         } else {
             groupTrees.forEach(tree => {
-                // Escape quotes in text fields
+                // Escape quotes in tree text fields
                 const species = (tree.species || '').replace(/"/g, '""');
                 const notes = (tree.notes || '').replace(/"/g, '""');
 
-                csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${group.brush_amount || ''}",`;
+                csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${groupAddress}","${group.brush_amount || ''}","${crewNotes}",`;
                 csv += `${tree.id},"${species}",${tree.latitude},${tree.longitude},${tree.diameter || ''},`;
-                csv += `"${tree.tree_type || ''}","${tree.action || ''}","${tree.health_condition || ''}","${notes}",${tree.completed ? 'Yes' : 'No'}\n`;
+                csv += `"${tree.tree_type || ''}","${tree.action || ''}","${tree.health_condition || ''}",${tree.canopy_removal ? 'Yes' : 'No'},"${notes}",${tree.completed ? 'Yes' : 'No'}\n`;
             });
         }
     });
