@@ -354,7 +354,7 @@ function exportSectionToExcel() {
 
     // Add tree data headers
     csv += 'Group Name,Circuit Number,Section Number,ID Number,Brush Amount,';
-    csv += 'Tree Species,Latitude,Longitude,Diameter (in),Tree Type,Action,Health Condition,Notes,Completed\n';
+    csv += 'Tree Number,Tree Species,Latitude,Longitude,Diameter (in),Tree Type,Action,Health Condition,Notes,Completed\n';
 
     // Add tree data for each group
     sectionGroups.forEach(group => {
@@ -363,7 +363,7 @@ function exportSectionToExcel() {
         if (groupTrees.length === 0) {
             // Add group row even if no trees
             csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${group.brush_amount || ''}",`;
-            csv += ',,,,,,,,\n';
+            csv += ',,,,,,,,,\n';
         } else {
             groupTrees.forEach(tree => {
                 // Escape quotes in text fields
@@ -371,7 +371,7 @@ function exportSectionToExcel() {
                 const notes = (tree.notes || '').replace(/"/g, '""');
 
                 csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${group.brush_amount || ''}",`;
-                csv += `"${species}",${tree.latitude},${tree.longitude},${tree.diameter || ''},`;
+                csv += `${tree.id},"${species}",${tree.latitude},${tree.longitude},${tree.diameter || ''},`;
                 csv += `"${tree.tree_type || ''}","${tree.action || ''}","${tree.health_condition || ''}","${notes}",${tree.completed ? 'Yes' : 'No'}\n`;
             });
         }
@@ -832,7 +832,7 @@ function renderTreesForGroup(groupId) {
         return `
             <div class="item-card">
                 <h3>
-                    ${tree.species || 'Unidentified Tree'}
+                    Tree #${tree.id} - ${tree.species || 'Unidentified'}
                     ${actionBadge}
                 </h3>
                 <div class="item-details">
@@ -919,6 +919,7 @@ function initializeTreeMap(groupId) {
 
         const popupContent = `
             <div style="font-family: 'Trebuchet MS', Tahoma, Arial, sans-serif; font-size: 12px;">
+                <strong>Tree #${tree.id}</strong><br>
                 <strong>${tree.species || 'Unidentified Tree'}</strong><br>
                 ${tree.tree_type ? `Type: ${tree.tree_type}<br>` : ''}
                 ${tree.diameter ? `Diameter: ${tree.diameter}"<br>` : ''}
@@ -1117,7 +1118,7 @@ function renderCrewTreesList(groupId) {
         return `
             <div class="item-card" style="${isCompleted ? 'opacity: 0.6;' : ''}">
                 <h3>
-                    ${tree.species || 'Unidentified Tree'}
+                    Tree #${tree.id} - ${tree.species || 'Unidentified'}
                     ${actionBadge}
                     ${isCompleted ? '<span class="badge" style="background: #22cc22; color: white;">✓ DONE</span>' : ''}
                 </h3>
