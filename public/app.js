@@ -10,8 +10,11 @@ let auditMap = null;
 let currentMode = 'entry';
 let isOnline = navigator.onLine;
 
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for IndexedDB to be ready before initializing app
+    await offlineDB.init();
+
+    await initializeApp();
     registerServiceWorker();
     initializeOfflineSupport();
 });
@@ -70,7 +73,7 @@ function initializeOfflineSupport() {
     syncManager.updateSyncBadge();
 }
 
-function initializeApp() {
+async function initializeApp() {
     // Theme Toggle
     const themeToggle = document.getElementById('themeToggle');
     const savedTheme = localStorage.getItem('theme');
@@ -134,10 +137,13 @@ function initializeApp() {
     document.getElementById('backFromRefusalsBtn').addEventListener('click', () => showAuditGroups(currentSectionId));
     document.getElementById('viewRefusalsBtn').addEventListener('click', () => showRefusals(currentProjectId));
 
-    loadProjects();
-    loadSections();
-    loadGroups();
-    loadTrees();
+    // Load all data from IndexedDB (and merge with server if online)
+    await Promise.all([
+        loadProjects(),
+        loadSections(),
+        loadGroups(),
+        loadTrees()
+    ]);
 }
 
 // MODE SWITCHING

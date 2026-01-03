@@ -418,7 +418,5 @@ class OfflineDB {
 // Create singleton instance
 const offlineDB = new OfflineDB();
 
-// Initialize when script loads
-offlineDB.init().catch(err => {
-  console.error('Failed to initialize offline database:', err);
-});
+// Note: Database is initialized explicitly in app.js during DOMContentLoaded
+// to ensure proper timing with data loading
