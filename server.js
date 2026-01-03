@@ -22,7 +22,8 @@ app.post('/api/projects', (req, res) => {
   try {
     const { name, wd_number, work_type } = req.body;
     const id = db.createProject({ name, wd_number, work_type });
-    res.json({ id });
+    const project = db.getProject(id);
+    res.json(project);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -32,7 +33,8 @@ app.put('/api/projects/:id', (req, res) => {
   try {
     const { name, wd_number, work_type } = req.body;
     db.updateProject(req.params.id, { name, wd_number, work_type });
-    res.json({ success: true });
+    const project = db.getProject(parseInt(req.params.id));
+    res.json(project);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -60,7 +62,8 @@ app.post('/api/sections', (req, res) => {
   try {
     const { project_id, name, section_number, description } = req.body;
     const id = db.createSection({ project_id, name, section_number, description });
-    res.json({ id });
+    const section = db.getSection(id);
+    res.json(section);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -70,7 +73,8 @@ app.put('/api/sections/:id', (req, res) => {
   try {
     const { project_id, name, section_number, description } = req.body;
     db.updateSection(req.params.id, { project_id, name, section_number, description });
-    res.json({ success: true });
+    const section = db.getSection(parseInt(req.params.id));
+    res.json(section);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -98,7 +102,8 @@ app.post('/api/groups', (req, res) => {
   try {
     const { section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification } = req.body;
     const id = db.createGroup({ section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification });
-    res.json({ id });
+    const group = db.getGroup(id);
+    res.json(group);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -108,7 +113,8 @@ app.put('/api/groups/:id', (req, res) => {
   try {
     const { section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification, completed } = req.body;
     db.updateGroup(req.params.id, { section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification, completed });
-    res.json({ success: true });
+    const group = db.getGroup(parseInt(req.params.id));
+    res.json(group);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
