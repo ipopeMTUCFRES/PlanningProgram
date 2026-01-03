@@ -8,10 +8,12 @@ let currentGroupId = null;
 let treeMap = null;
 let auditMap = null;
 let currentMode = 'entry';
+let isOnline = navigator.onLine;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
     registerServiceWorker();
+    initializeOfflineSupport();
 });
 
 // Register Service Worker for PWA functionality
@@ -30,6 +32,98 @@ function registerServiceWorker() {
                 console.log('Service Worker registration failed:', error);
             });
     }
+}
+
+// Initialize offline support and network monitoring
+function initializeOfflineSupport() {
+    const offlineIndicator = document.getElementById('offlineIndicator');
+    const statusText = offlineIndicator.querySelector('.status-text');
+    const pendingCount = document.getElementById('pendingCount');
+
+    // Update UI based on online/offline status
+    function updateOnlineStatus() {
+        isOnline = navigator.onLine;
+
+        if (isOnline) {
+            offlineIndicator.classList.add('hidden');
+            statusText.textContent = 'Online';
+            // Try to sync any pending operations
+            syncPendingOperations();
+        } else {
+            offlineIndicator.classList.remove('hidden');
+            statusText.textContent = 'Offline';
+        }
+
+        updatePendingCount();
+    }
+
+    // Update pending operations count
+    async function updatePendingCount() {
+        try {
+            const count = await offlineDB.getPendingCount();
+            if (count > 0) {
+                pendingCount.textContent = `${count} pending`;
+                pendingCount.classList.remove('hidden');
+            } else {
+                pendingCount.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error updating pending count:', error);
+        }
+    }
+
+    // Sync pending operations when online
+    async function syncPendingOperations() {
+        if (!isOnline) return;
+
+        try {
+            const pending = await offlineDB.getPendingOperations();
+
+            for (const operation of pending) {
+                try {
+                    await executeOperation(operation);
+                    await offlineDB.removePendingOperation(operation.id);
+                    console.log('Synced operation:', operation);
+                } catch (error) {
+                    console.error('Failed to sync operation:', operation, error);
+                    // Keep the operation in queue for retry
+                }
+            }
+
+            updatePendingCount();
+        } catch (error) {
+            console.error('Error syncing pending operations:', error);
+        }
+    }
+
+    // Execute a pending operation
+    async function executeOperation(operation) {
+        const { type, entity, data, method, url } = operation;
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: method !== 'GET' ? JSON.stringify(data) : undefined
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to sync ${entity}: ${response.statusText}`);
+        }
+
+        return await response.json();
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    // Initial status check
+    updateOnlineStatus();
+
+    // Periodically check pending count
+    setInterval(updatePendingCount, 5000);
 }
 
 function initializeApp() {
@@ -187,6 +281,26 @@ async function handleProjectSubmit(e) {
     const url = projectId ? `/api/projects/${projectId}` : '/api/projects';
     const method = projectId ? 'PUT' : 'POST';
 
+    // If offline, queue the operation
+    if (!isOnline) {
+        try {
+            await offlineDB.addPendingOperation({
+                type: projectId ? 'update' : 'create',
+                entity: 'project',
+                data: projectData,
+                method: method,
+                url: url
+            });
+
+            alert('You are offline. Project will be saved when connection is restored.');
+            return;
+        } catch (error) {
+            console.error('Error queuing offline operation:', error);
+            alert('Error saving offline. Please try again.');
+            return;
+        }
+    }
+
     try {
         const response = await fetch(url, {
             method: method,
@@ -216,7 +330,26 @@ async function handleProjectSubmit(e) {
         }
     } catch (error) {
         console.error('Error saving project:', error);
-        alert('Error saving project');
+
+        // If fetch failed, might be offline - queue it
+        if (!navigator.onLine) {
+            try {
+                await offlineDB.addPendingOperation({
+                    type: projectId ? 'update' : 'create',
+                    entity: 'project',
+                    data: projectData,
+                    method: method,
+                    url: url
+                });
+
+                alert('Connection lost. Project will be saved when connection is restored.');
+            } catch (queueError) {
+                console.error('Error queuing operation:', queueError);
+                alert('Error saving project');
+            }
+        } else {
+            alert('Error saving project');
+        }
     }
 }
 
@@ -310,6 +443,26 @@ async function handleSectionSubmit(e) {
     const url = sectionId ? `/api/sections/${sectionId}` : '/api/sections';
     const method = sectionId ? 'PUT' : 'POST';
 
+    // If offline, queue the operation
+    if (!isOnline) {
+        try {
+            await offlineDB.addPendingOperation({
+                type: sectionId ? 'update' : 'create',
+                entity: 'section',
+                data: sectionData,
+                method: method,
+                url: url
+            });
+
+            alert('You are offline. Section will be saved when connection is restored.');
+            return;
+        } catch (error) {
+            console.error('Error queuing offline operation:', error);
+            alert('Error saving offline. Please try again.');
+            return;
+        }
+    }
+
     try {
         const response = await fetch(url, {
             method: method,
@@ -338,7 +491,26 @@ async function handleSectionSubmit(e) {
         }
     } catch (error) {
         console.error('Error saving section:', error);
-        alert('Error saving section');
+
+        // If fetch failed, might be offline - queue it
+        if (!navigator.onLine) {
+            try {
+                await offlineDB.addPendingOperation({
+                    type: sectionId ? 'update' : 'create',
+                    entity: 'section',
+                    data: sectionData,
+                    method: method,
+                    url: url
+                });
+
+                alert('Connection lost. Section will be saved when connection is restored.');
+            } catch (queueError) {
+                console.error('Error queuing operation:', queueError);
+                alert('Error saving section');
+            }
+        } else {
+            alert('Error saving section');
+        }
     }
 }
 
@@ -543,6 +715,26 @@ async function handleGroupSubmit(e) {
     const url = groupId ? `/api/groups/${groupId}` : '/api/groups';
     const method = groupId ? 'PUT' : 'POST';
 
+    // If offline, queue the operation
+    if (!isOnline) {
+        try {
+            await offlineDB.addPendingOperation({
+                type: groupId ? 'update' : 'create',
+                entity: 'group',
+                data: groupData,
+                method: method,
+                url: url
+            });
+
+            alert('You are offline. Group will be saved when connection is restored.');
+            return;
+        } catch (error) {
+            console.error('Error queuing offline operation:', error);
+            alert('Error saving offline. Please try again.');
+            return;
+        }
+    }
+
     try {
         const response = await fetch(url, {
             method: method,
@@ -571,7 +763,26 @@ async function handleGroupSubmit(e) {
         }
     } catch (error) {
         console.error('Error saving group:', error);
-        alert('Error saving group');
+
+        // If fetch failed, might be offline - queue it
+        if (!navigator.onLine) {
+            try {
+                await offlineDB.addPendingOperation({
+                    type: groupId ? 'update' : 'create',
+                    entity: 'group',
+                    data: groupData,
+                    method: method,
+                    url: url
+                });
+
+                alert('Connection lost. Group will be saved when connection is restored.');
+            } catch (queueError) {
+                console.error('Error queuing operation:', queueError);
+                alert('Error saving group');
+            }
+        } else {
+            alert('Error saving group');
+        }
     }
 }
 
@@ -693,6 +904,26 @@ async function handleTreeSubmit(e) {
     const url = treeId ? `/api/trees/${treeId}` : '/api/trees';
     const method = treeId ? 'PUT' : 'POST';
 
+    // If offline, queue the operation
+    if (!isOnline) {
+        try {
+            await offlineDB.addPendingOperation({
+                type: treeId ? 'update' : 'create',
+                entity: 'tree',
+                data: treeData,
+                method: method,
+                url: url
+            });
+
+            alert('You are offline. Tree will be saved when connection is restored.');
+            return;
+        } catch (error) {
+            console.error('Error queuing offline operation:', error);
+            alert('Error saving offline. Please try again.');
+            return;
+        }
+    }
+
     try {
         const response = await fetch(url, {
             method: method,
@@ -718,7 +949,26 @@ async function handleTreeSubmit(e) {
         }
     } catch (error) {
         console.error('Error saving tree:', error);
-        alert('Error saving tree');
+
+        // If fetch failed, might be offline - queue it
+        if (!navigator.onLine) {
+            try {
+                await offlineDB.addPendingOperation({
+                    type: treeId ? 'update' : 'create',
+                    entity: 'tree',
+                    data: treeData,
+                    method: method,
+                    url: url
+                });
+
+                alert('Connection lost. Tree will be saved when connection is restored.');
+            } catch (queueError) {
+                console.error('Error queuing operation:', queueError);
+                alert('Error saving tree');
+            }
+        } else {
+            alert('Error saving tree');
+        }
     }
 }
 

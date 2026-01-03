@@ -100,8 +100,8 @@ app.get('/api/groups', (req, res) => {
 
 app.post('/api/groups', (req, res) => {
   try {
-    const { section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification } = req.body;
-    const id = db.createGroup({ section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification });
+    const { section_id, name, circuit_number, section_number, id_number, address, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification } = req.body;
+    const id = db.createGroup({ section_id, name, circuit_number, section_number, id_number, address, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification });
     const group = db.getGroup(id);
     res.json(group);
   } catch (error) {
@@ -111,8 +111,8 @@ app.post('/api/groups', (req, res) => {
 
 app.put('/api/groups/:id', (req, res) => {
   try {
-    const { section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification, completed } = req.body;
-    db.updateGroup(req.params.id, { section_id, name, circuit_number, section_number, id_number, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification, completed });
+    const { section_id, name, circuit_number, section_number, id_number, address, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification, completed } = req.body;
+    db.updateGroup(req.params.id, { section_id, name, circuit_number, section_number, id_number, address, comments, brush_amount, cutting_equipment, cleanup_equipment, customer_notification, completed });
     const group = db.getGroup(parseInt(req.params.id));
     res.json(group);
   } catch (error) {

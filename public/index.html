@@ -35,6 +35,11 @@
             <div class="header-content">
                 <h1>Tree Survey Application</h1>
                 <div class="header-controls">
+                    <div id="offlineIndicator" class="offline-indicator hidden">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Offline</span>
+                        <span id="pendingCount" class="pending-count hidden">0 pending</span>
+                    </div>
                     <div class="mode-selector">
                         <button id="entryModeBtn" class="btn mode-btn active">Entry Mode</button>
                         <button id="crewModeBtn" class="btn mode-btn">Crew Mode</button>
@@ -480,6 +485,7 @@
         </main>
     </div>
 
+    <script src="offline-db.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

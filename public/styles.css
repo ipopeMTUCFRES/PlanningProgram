@@ -70,6 +70,58 @@ header h1 {
     margin: 0;
 }
 
+/* Offline Indicator */
+.offline-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-size: 14px;
+    color: #ffffff;
+}
+
+.offline-indicator.hidden {
+    display: none;
+}
+
+.offline-indicator .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff6b6b;
+    animation: pulse 2s infinite;
+}
+
+.offline-indicator .status-text {
+    font-weight: 600;
+}
+
+.offline-indicator .pending-count {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.offline-indicator .pending-count.hidden {
+    display: none;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
 .back-button-container {
     margin-bottom: 20px;
 }
