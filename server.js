@@ -20,8 +20,8 @@ app.get('/api/projects', (req, res) => {
 
 app.post('/api/projects', (req, res) => {
   try {
-    const { name, work_type } = req.body;
-    const id = db.createProject({ name, work_type });
+    const { name, wd_number, work_type } = req.body;
+    const id = db.createProject({ name, wd_number, work_type });
     res.json({ id });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -30,8 +30,8 @@ app.post('/api/projects', (req, res) => {
 
 app.put('/api/projects/:id', (req, res) => {
   try {
-    const { name, work_type } = req.body;
-    db.updateProject(req.params.id, { name, work_type });
+    const { name, wd_number, work_type } = req.body;
+    db.updateProject(req.params.id, { name, wd_number, work_type });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -58,8 +58,8 @@ app.get('/api/sections', (req, res) => {
 
 app.post('/api/sections', (req, res) => {
   try {
-    const { project_id, name, description } = req.body;
-    const id = db.createSection({ project_id, name, description });
+    const { project_id, name, section_number, description } = req.body;
+    const id = db.createSection({ project_id, name, section_number, description });
     res.json({ id });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -68,8 +68,8 @@ app.post('/api/sections', (req, res) => {
 
 app.put('/api/sections/:id', (req, res) => {
   try {
-    const { project_id, name, description } = req.body;
-    db.updateSection(req.params.id, { project_id, name, description });
+    const { project_id, name, section_number, description } = req.body;
+    db.updateSection(req.params.id, { project_id, name, section_number, description });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
