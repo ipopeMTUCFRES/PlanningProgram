@@ -396,19 +396,23 @@ function exportSectionToExcel() {
 
     // Add header with project and section info
     csv += `Project:,${project ? project.name : 'Unknown'}\n`;
+    csv += `WD Number:,${project ? project.wd_number : 'N/A'}\n`;
     csv += `Work Type:,${project ? project.work_type : 'Unknown'}\n`;
     csv += `Section:,${section.name}\n`;
+    csv += `Section Number:,${section.section_number || 'N/A'}\n`;
     csv += `Description:,${section.description || 'N/A'}\n`;
     csv += `Export Date:,${new Date().toLocaleString()}\n`;
     csv += '\n';
 
     // Add tree data headers
-    csv += 'Group Name,Circuit Number,Section Number,ID Number,Address,Brush Amount,Crew Notes,';
+    csv += 'Group Name,WD Number,Section Number,ID Number,Address,Brush Amount,Crew Notes,';
     csv += 'Tree Number,Tree Species,Latitude,Longitude,Diameter (in),Tree Type,Action,Health Condition,Canopy Removal,Notes,Completed\n';
 
     // Add tree data for each group
     sectionGroups.forEach(group => {
         const groupTrees = trees.filter(t => t.group_id === group.id);
+        // Sort trees by ID for sequential numbering
+        groupTrees.sort((a, b) => a.id - b.id);
 
         // Escape quotes in group text fields
         const groupAddress = (group.address || '').replace(/"/g, '""');
@@ -419,13 +423,15 @@ function exportSectionToExcel() {
             csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${groupAddress}","${group.brush_amount || ''}","${crewNotes}",`;
             csv += ',,,,,,,,,,\n';
         } else {
-            groupTrees.forEach(tree => {
+            groupTrees.forEach((tree, index) => {
+                const treeNumber = index + 1; // Sequential numbering within group
+
                 // Escape quotes in tree text fields
                 const species = (tree.species || '').replace(/"/g, '""');
                 const notes = (tree.notes || '').replace(/"/g, '""');
 
                 csv += `"${group.name || ''}","${group.circuit_number || ''}","${group.section_number || ''}","${group.id_number || ''}","${groupAddress}","${group.brush_amount || ''}","${crewNotes}",`;
-                csv += `${tree.id},"${species}",${tree.latitude},${tree.longitude},${tree.diameter || ''},`;
+                csv += `${treeNumber},"${species}",${tree.latitude},${tree.longitude},${tree.diameter || ''},`;
                 csv += `"${tree.tree_type || ''}","${tree.action || ''}","${tree.health_condition || ''}",${tree.canopy_removal ? 'Yes' : 'No'},"${notes}",${tree.completed ? 'Yes' : 'No'}\n`;
             });
         }
@@ -911,6 +917,15 @@ function renderGroupsForSection(sectionId) {
     }).join('');
 }
 
+// Helper function to get sequential tree number within a group
+function getTreeNumberInGroup(tree) {
+    const groupTrees = trees.filter(t => t.group_id === tree.group_id);
+    // Sort by ID (creation order) to get sequential numbering
+    groupTrees.sort((a, b) => a.id - b.id);
+    const treeIndex = groupTrees.findIndex(t => t.id === tree.id);
+    return treeIndex + 1; // 1-based numbering
+}
+
 function renderTreesForGroup(groupId) {
     const container = document.getElementById('treesList');
     const groupTrees = trees.filter(t => t.group_id === groupId);
@@ -920,14 +935,18 @@ function renderTreesForGroup(groupId) {
         return;
     }
 
-    container.innerHTML = groupTrees.map(tree => {
+    // Sort trees by ID for sequential display
+    groupTrees.sort((a, b) => a.id - b.id);
+
+    container.innerHTML = groupTrees.map((tree, index) => {
+        const treeNumber = index + 1; // Sequential numbering within group
         const actionBadge = tree.action ? `<span class="badge badge-${tree.action}">${tree.action.toUpperCase()}</span>` : '';
         const canopyBadge = tree.canopy_removal ? `<span class="badge" style="background: #8B4513; color: white;">CANOPY-REMOVAL</span>` : '';
 
         return `
             <div class="item-card">
                 <h3>
-                    Tree #${tree.id} - ${tree.species || 'Unidentified'}
+                    Tree #${treeNumber} - ${tree.species || 'Unidentified'}
                     ${actionBadge}
                     ${canopyBadge}
                 </h3>
@@ -999,8 +1018,12 @@ function initializeTreeMap(groupId) {
         '': '#3366ff'
     };
 
+    // Sort trees by ID for sequential numbering
+    groupTrees.sort((a, b) => a.id - b.id);
+
     // Add markers for each tree
-    groupTrees.forEach(tree => {
+    groupTrees.forEach((tree, index) => {
+        const treeNumber = index + 1; // Sequential numbering within group
         const color = actionColors[tree.action] || actionColors[''];
 
         const icon = L.divIcon({
@@ -1022,7 +1045,7 @@ function initializeTreeMap(groupId) {
 
         const popupContent = `
             <div style="font-family: 'Trebuchet MS', Tahoma, Arial, sans-serif; font-size: 12px;">
-                <strong>Tree #${tree.id}</strong><br>
+                <strong>Tree #${treeNumber}</strong><br>
                 <strong>${tree.species || 'Unidentified Tree'}</strong><br>
                 ${tree.tree_type ? `Type: ${tree.tree_type}<br>` : ''}
                 ${tree.diameter ? `Diameter: ${tree.diameter}"<br>` : ''}
@@ -1217,7 +1240,11 @@ function renderCrewTreesList(groupId) {
         return;
     }
 
-    container.innerHTML = groupTrees.map(tree => {
+    // Sort trees by ID for sequential display
+    groupTrees.sort((a, b) => a.id - b.id);
+
+    container.innerHTML = groupTrees.map((tree, index) => {
+        const treeNumber = index + 1; // Sequential numbering within group
         const isCompleted = tree.completed || false;
         const actionBadge = tree.action ? `<span class="badge badge-${tree.action}">${tree.action.toUpperCase()}</span>` : '';
         const canopyBadge = tree.canopy_removal ? `<span class="badge" style="background: #8B4513; color: white;">CANOPY-REMOVAL</span>` : '';
@@ -1225,7 +1252,7 @@ function renderCrewTreesList(groupId) {
         return `
             <div class="item-card" style="${isCompleted ? 'opacity: 0.6;' : ''}">
                 <h3>
-                    Tree #${tree.id} - ${tree.species || 'Unidentified'}
+                    Tree #${treeNumber} - ${tree.species || 'Unidentified'}
                     ${actionBadge}
                     ${canopyBadge}
                     ${isCompleted ? '<span class="badge" style="background: #22cc22; color: white;">✓ DONE</span>' : ''}
