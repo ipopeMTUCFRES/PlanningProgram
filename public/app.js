@@ -300,6 +300,7 @@ async function handleSectionSubmit(e) {
     const sectionData = {
         project_id: currentProjectId,
         name: document.getElementById('sectionName').value,
+        section_number: document.getElementById('sectionNumber').value,
         description: document.getElementById('sectionDescription').value
     };
 
@@ -374,6 +375,7 @@ function resetSectionForm() {
 function populateSectionForm(section) {
     document.getElementById('sectionId').value = section.id;
     document.getElementById('sectionName').value = section.name;
+    document.getElementById('sectionNumber').value = section.section_number || '';
     document.getElementById('sectionDescription').value = section.description || '';
 }
 
@@ -866,6 +868,7 @@ function renderSectionsForProject(projectId) {
             <div class="item-card" onclick="showSectionDetail(${section.id})" style="cursor: pointer;">
                 <h3>${section.name}</h3>
                 <div class="item-details">
+                    <div class="detail-item"><strong>Section Number:</strong> ${section.section_number || 'N/A'}</div>
                     ${section.description ? `<div class="detail-item"><strong>Description:</strong> ${section.description}</div>` : ''}
                     <div class="detail-item"><strong>Groups:</strong> ${sectionGroups.length}</div>
                     <div class="detail-item"><strong>Trees:</strong> ${treeCount}</div>
