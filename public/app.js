@@ -93,6 +93,8 @@ function initializeApp() {
     // Audit Mode
     document.getElementById('backToAuditProjectsBtn').addEventListener('click', showAuditProjects);
     document.getElementById('backToAuditSectionsBtn').addEventListener('click', () => showAuditSections(currentProjectId));
+    document.getElementById('backFromRefusalsBtn').addEventListener('click', () => showAuditGroups(currentSectionId));
+    document.getElementById('viewRefusalsBtn').addEventListener('click', () => showRefusals(currentProjectId));
 
     loadProjects();
     loadSections();
@@ -1667,4 +1669,64 @@ function initializeAuditMap(sectionId) {
         const bounds = L.latLngBounds(allLats.map((lat, i) => [lat, allLngs[i]]));
         auditMap.fitBounds(bounds, { padding: [50, 50] });
     }
+}
+
+// REFUSALS VIEW
+function showRefusals(projectId) {
+    currentProjectId = projectId;
+    document.getElementById('auditProjectsView').classList.remove('active');
+    document.getElementById('auditSectionsView').classList.remove('active');
+    document.getElementById('auditGroupsView').classList.remove('active');
+    document.getElementById('refusalsView').classList.add('active');
+
+    const project = projects.find(p => p.id === projectId);
+    if (project) {
+        document.getElementById('refusalsTitle').textContent = `Refusals for ${project.name}`;
+    }
+
+    renderRefusals(projectId);
+}
+
+function renderRefusals(projectId) {
+    const container = document.getElementById('refusalsList');
+
+    // Get all sections for this project
+    const projectSections = sections.filter(s => s.project_id === projectId);
+    const sectionIds = projectSections.map(s => s.id);
+
+    // Get all groups for these sections that have "Refusal" in customer notification
+    const refusalGroups = groups.filter(g =>
+        sectionIds.includes(g.section_id) &&
+        g.customer_notification &&
+        g.customer_notification.includes('Refusal')
+    );
+
+    if (refusalGroups.length === 0) {
+        container.innerHTML = '<div class="empty-state">No refusals recorded for this project</div>';
+        return;
+    }
+
+    container.innerHTML = refusalGroups.map(group => {
+        const section = sections.find(s => s.id === group.section_id);
+        const sectionName = section ? section.name : 'Unknown Section';
+        const displayName = group.name || group.circuit_number || 'Unnamed Group';
+        const groupTrees = trees.filter(t => t.group_id === group.id);
+        const totalTrees = groupTrees.length;
+
+        return `
+            <div class="item-card">
+                <h3>
+                    ${displayName}
+                    <span class="badge" style="background: #a4262c; color: white;">REFUSAL</span>
+                </h3>
+                <div class="item-details">
+                    <div class="detail-item"><strong>Section:</strong> ${sectionName}</div>
+                    ${group.address ? `<div class="detail-item"><strong>Address:</strong> ${group.address}</div>` : ''}
+                    <div class="detail-item"><strong>Trees:</strong> ${totalTrees}</div>
+                    ${group.comments ? `<div class="detail-item"><strong>Comments:</strong> ${group.comments}</div>` : ''}
+                    ${group.crew_notes ? `<div class="detail-item"><strong>Crew Notes:</strong> ${group.crew_notes}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
 }
