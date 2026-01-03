@@ -32,6 +32,11 @@ module.exports = {
     return data.projects || [];
   },
 
+  getProject: (id) => {
+    const data = loadData();
+    return data.projects.find(p => p.id === parseInt(id));
+  },
+
   createProject: (project) => {
     const data = loadData();
     if (!data.projects) data.projects = [];
@@ -78,6 +83,11 @@ module.exports = {
     return data.sections || [];
   },
 
+  getSection: (id) => {
+    const data = loadData();
+    return data.sections.find(s => s.id === parseInt(id));
+  },
+
   createSection: (section) => {
     const data = loadData();
     if (!data.sections) data.sections = [];
@@ -118,6 +128,11 @@ module.exports = {
   getAllGroups: () => {
     const data = loadData();
     return data.groups;
+  },
+
+  getGroup: (id) => {
+    const data = loadData();
+    return data.groups.find(g => g.id === parseInt(id));
   },
 
   createGroup: (group) => {
