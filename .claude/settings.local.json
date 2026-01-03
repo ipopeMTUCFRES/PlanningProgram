@@ -18,7 +18,13 @@
       "Bash(kill:*)",
       "Bash(xargs kill:*)",
       "Bash(curl:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(node server.js:*)",
+      "Bash(python3:*)",
+      "Bash(for i in 1 2 3)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(git reset:*)"
     ]
   }
 }

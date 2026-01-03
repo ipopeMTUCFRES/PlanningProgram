@@ -65,11 +65,7 @@ function initializeOfflineSupport() {
         syncManager.syncToServer();
     });
 
-    // Update sync badge periodically
-    setInterval(() => {
-        syncManager.updateSyncBadge();
-    }, 5000);
-
+    // Update sync badge only when data changes (not on a timer)
     // Initial badge update
     syncManager.updateSyncBadge();
 }
@@ -976,19 +972,27 @@ async function loadTrees() {
     }
 }
 
-// Merge server data with local data
+// Merge server data with local data (optimized batch version)
 async function mergeProjects(serverProjects) {
-    for (const serverProject of serverProjects) {
-        const local = await offlineDB.getProject(serverProject.id);
+    // Get all local projects once
+    const localProjects = await offlineDB.getAllProjects();
+    const localMap = new Map(localProjects.map(p => [p.id, p]));
 
-        if (!local) {
-            // New from server
-            await offlineDB.saveProject({...serverProject, sync_status: 'synced'});
-        } else if (local.sync_status === 'synced') {
-            // Update if already synced
-            await offlineDB.saveProject({...serverProject, sync_status: 'synced'});
+    // Batch save operations
+    const toSave = [];
+    for (const serverProject of serverProjects) {
+        const local = localMap.get(serverProject.id);
+
+        if (!local || local.sync_status === 'synced') {
+            // New from server or update synced item
+            toSave.push({...serverProject, sync_status: 'synced'});
         }
-        // If local_only or modified, keep local version
+        // If local_only or modified, keep local version (don't add to toSave)
+    }
+
+    // Save all at once
+    for (const item of toSave) {
+        await offlineDB.saveProject(item);
     }
 
     projects = await offlineDB.getAllProjects();
@@ -996,42 +1000,60 @@ async function mergeProjects(serverProjects) {
 }
 
 async function mergeSections(serverSections) {
-    for (const serverSection of serverSections) {
-        const local = await offlineDB.getSection(serverSection.id);
+    const localSections = await offlineDB.getAllSections();
+    const localMap = new Map(localSections.map(s => [s.id, s]));
 
-        if (!local) {
-            await offlineDB.saveSection({...serverSection, sync_status: 'synced'});
-        } else if (local.sync_status === 'synced') {
-            await offlineDB.saveSection({...serverSection, sync_status: 'synced'});
+    const toSave = [];
+    for (const serverSection of serverSections) {
+        const local = localMap.get(serverSection.id);
+
+        if (!local || local.sync_status === 'synced') {
+            toSave.push({...serverSection, sync_status: 'synced'});
         }
+    }
+
+    for (const item of toSave) {
+        await offlineDB.saveSection(item);
     }
 
     sections = await offlineDB.getAllSections();
 }
 
 async function mergeGroups(serverGroups) {
-    for (const serverGroup of serverGroups) {
-        const local = await offlineDB.getGroup(serverGroup.id);
+    const localGroups = await offlineDB.getAllGroups();
+    const localMap = new Map(localGroups.map(g => [g.id, g]));
 
-        if (!local) {
-            await offlineDB.saveGroup({...serverGroup, sync_status: 'synced'});
-        } else if (local.sync_status === 'synced') {
-            await offlineDB.saveGroup({...serverGroup, sync_status: 'synced'});
+    const toSave = [];
+    for (const serverGroup of serverGroups) {
+        const local = localMap.get(serverGroup.id);
+
+        if (!local || local.sync_status === 'synced') {
+            toSave.push({...serverGroup, sync_status: 'synced'});
         }
+    }
+
+    for (const item of toSave) {
+        await offlineDB.saveGroup(item);
     }
 
     groups = await offlineDB.getAllGroups();
 }
 
 async function mergeTrees(serverTrees) {
-    for (const serverTree of serverTrees) {
-        const local = await offlineDB.getTree(serverTree.id);
+    const localTrees = await offlineDB.getAllTrees();
+    const localMap = new Map(localTrees.map(t => [t.id, t]));
 
-        if (!local) {
-            await offlineDB.saveTree({...serverTree, sync_status: 'synced'});
-        } else if (local.sync_status === 'synced') {
-            await offlineDB.saveTree({...serverTree, sync_status: 'synced'});
+    const toSave = [];
+    for (const serverTree of serverTrees) {
+        const local = localMap.get(serverTree.id);
+
+        if (!local || local.sync_status === 'synced') {
+            toSave.push({...serverTree, sync_status: 'synced'});
         }
+    }
+
+    for (const item of toSave) {
+        await offlineDB.saveTree(item);
     }
 
     trees = await offlineDB.getAllTrees();
@@ -1046,18 +1068,51 @@ function renderProjects() {
         return;
     }
 
+    // Pre-compute relationship maps for O(1) lookups
+    const sectionsByProject = new Map();
+    const groupsBySection = new Map();
+    const treesByGroup = new Map();
+
+    // Build section map
+    sections.forEach(section => {
+        if (!sectionsByProject.has(section.project_id)) {
+            sectionsByProject.set(section.project_id, []);
+        }
+        sectionsByProject.get(section.project_id).push(section);
+    });
+
+    // Build group map
+    groups.forEach(group => {
+        if (!groupsBySection.has(group.section_id)) {
+            groupsBySection.set(group.section_id, []);
+        }
+        groupsBySection.get(group.section_id).push(group);
+    });
+
+    // Build tree map
+    trees.forEach(tree => {
+        if (!treesByGroup.has(tree.group_id)) {
+            treesByGroup.set(tree.group_id, []);
+        }
+        treesByGroup.get(tree.group_id).push(tree);
+    });
+
     container.innerHTML = projects.map(project => {
-        const projectSections = sections.filter(s => s.project_id === project.id);
-        const projectGroups = groups.filter(g => {
-            const section = sections.find(s => s.id === g.section_id);
-            return section && section.project_id === project.id;
+        const projectSections = sectionsByProject.get(project.id) || [];
+
+        // Count groups in this project
+        let groupCount = 0;
+        let treeCount = 0;
+        projectSections.forEach(section => {
+            const sectionGroups = groupsBySection.get(section.id) || [];
+            groupCount += sectionGroups.length;
+
+            // Count trees in these groups
+            sectionGroups.forEach(group => {
+                const groupTrees = treesByGroup.get(group.id) || [];
+                treeCount += groupTrees.length;
+            });
         });
-        const treeCount = trees.filter(t => {
-            const group = groups.find(g => g.id === t.group_id);
-            if (!group) return false;
-            const section = sections.find(s => s.id === group.section_id);
-            return section && section.project_id === project.id;
-        }).length;
 
         return `
             <div class="item-card" onclick="showProjectDetail('${project.id}')" style="cursor: pointer;">
@@ -1066,7 +1121,7 @@ function renderProjects() {
                     <div class="detail-item"><strong>WD Number:</strong> ${project.wd_number || 'N/A'}</div>
                     <div class="detail-item"><strong>Work Type:</strong> ${project.work_type}</div>
                     <div class="detail-item"><strong>Sections:</strong> ${projectSections.length}</div>
-                    <div class="detail-item"><strong>Groups:</strong> ${projectGroups.length}</div>
+                    <div class="detail-item"><strong>Groups:</strong> ${groupCount}</div>
                     <div class="detail-item"><strong>Total Trees:</strong> ${treeCount}</div>
                 </div>
             </div>
@@ -1083,12 +1138,33 @@ function renderSectionsForProject(projectId) {
         return;
     }
 
+    // Pre-compute group and tree maps for O(1) lookups
+    const groupsBySection = new Map();
+    const treesByGroup = new Map();
+
+    groups.forEach(group => {
+        if (!groupsBySection.has(group.section_id)) {
+            groupsBySection.set(group.section_id, []);
+        }
+        groupsBySection.get(group.section_id).push(group);
+    });
+
+    trees.forEach(tree => {
+        if (!treesByGroup.has(tree.group_id)) {
+            treesByGroup.set(tree.group_id, []);
+        }
+        treesByGroup.get(tree.group_id).push(tree);
+    });
+
     container.innerHTML = projectSections.map(section => {
-        const sectionGroups = groups.filter(g => g.section_id === section.id);
-        const treeCount = trees.filter(t => {
-            const group = groups.find(g => g.id === t.group_id);
-            return group && group.section_id === section.id;
-        }).length;
+        const sectionGroups = groupsBySection.get(section.id) || [];
+
+        // Count trees in this section's groups
+        let treeCount = 0;
+        sectionGroups.forEach(group => {
+            const groupTrees = treesByGroup.get(group.id) || [];
+            treeCount += groupTrees.length;
+        });
 
         return `
             <div class="item-card" onclick="showSectionDetail('${section.id}')" style="cursor: pointer;">
@@ -1113,8 +1189,14 @@ function renderGroupsForSection(sectionId) {
         return;
     }
 
+    // Pre-compute tree counts for all groups in one pass
+    const treeCountByGroup = new Map();
+    trees.forEach(tree => {
+        treeCountByGroup.set(tree.group_id, (treeCountByGroup.get(tree.group_id) || 0) + 1);
+    });
+
     container.innerHTML = sectionGroups.map(group => {
-        const treeCount = trees.filter(t => t.group_id === group.id).length;
+        const treeCount = treeCountByGroup.get(group.id) || 0;
         const displayName = group.name || group.circuit_number || 'Unnamed Group';
         const comments = group.comments || group.description || '';
 
