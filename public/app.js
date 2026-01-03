@@ -488,11 +488,25 @@ async function handleGroupSubmit(e) {
         return;
     }
 
-    const circuitNumber = document.getElementById('circuitNumber').value;
-    const sectionNumber = document.getElementById('sectionNumber').value;
+    // Get WD Number from parent project and Section Number from parent section
+    const section = sections.find(s => s.id === currentSectionId);
+    if (!section) {
+        alert('Error: Section not found');
+        return;
+    }
+
+    const project = projects.find(p => p.id === section.project_id);
+    if (!project) {
+        alert('Error: Project not found');
+        return;
+    }
+
+    const wdNumber = project.wd_number;
+    const sectionNumber = section.section_number;
     const idNumber = document.getElementById('idNumber').value;
 
-    const name = `${circuitNumber}-${sectionNumber}-${idNumber}`;
+    // Build group name automatically: WD-{wdNumber}-{sectionNumber}-{idNumber}
+    const name = `WD-${wdNumber}-${sectionNumber}-${idNumber}`;
 
     const cuttingEquipment = Array.from(document.querySelectorAll('input[name="cuttingEquipment"]:checked'))
         .map(cb => cb.value);
@@ -506,7 +520,7 @@ async function handleGroupSubmit(e) {
     const groupData = {
         section_id: currentSectionId,
         name: name,
-        circuit_number: circuitNumber,
+        circuit_number: wdNumber,
         section_number: sectionNumber,
         id_number: idNumber,
         address: document.getElementById('groupAddress').value,
@@ -583,29 +597,12 @@ function resetGroupForm() {
     document.querySelectorAll('input[name="cleanupEquipment"]').forEach(cb => cb.checked = false);
     document.querySelectorAll('input[name="customerNotification"]').forEach(cb => cb.checked = false);
 
-    // Auto-fill circuit and section numbers from the most recent group in the same section
-    if (currentSectionId) {
-        const sectionGroups = groups.filter(g => g.section_id === currentSectionId);
-        if (sectionGroups.length > 0) {
-            // Sort by ID to get the most recent group
-            sectionGroups.sort((a, b) => b.id - a.id);
-            const lastGroup = sectionGroups[0];
-
-            // Auto-fill circuit and section numbers
-            if (lastGroup.circuit_number) {
-                document.getElementById('circuitNumber').value = lastGroup.circuit_number;
-            }
-            if (lastGroup.section_number) {
-                document.getElementById('sectionNumber').value = lastGroup.section_number;
-            }
-        }
-    }
+    // No auto-fill needed - WD number and section number come from parent entities
 }
 
 function populateGroupForm(group) {
     document.getElementById('groupId').value = group.id;
-    document.getElementById('circuitNumber').value = group.circuit_number;
-    document.getElementById('sectionNumber').value = group.section_number || '';
+    // Only populate ID Number - circuit and section numbers come from parent entities
     document.getElementById('idNumber').value = group.id_number || '';
     document.getElementById('groupAddress').value = group.address || '';
     document.getElementById('groupComments').value = group.comments || group.description || '';
