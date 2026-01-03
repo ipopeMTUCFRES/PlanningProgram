@@ -1060,7 +1060,7 @@ function renderProjects() {
         }).length;
 
         return `
-            <div class="item-card" onclick="showProjectDetail(${project.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showProjectDetail('${project.id}')" style="cursor: pointer;">
                 <h3>${project.name}</h3>
                 <div class="item-details">
                     <div class="detail-item"><strong>WD Number:</strong> ${project.wd_number || 'N/A'}</div>
@@ -1091,7 +1091,7 @@ function renderSectionsForProject(projectId) {
         }).length;
 
         return `
-            <div class="item-card" onclick="showSectionDetail(${section.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showSectionDetail('${section.id}')" style="cursor: pointer;">
                 <h3>${section.name}</h3>
                 <div class="item-details">
                     <div class="detail-item"><strong>Section Number:</strong> ${section.section_number || 'N/A'}</div>
@@ -1125,7 +1125,7 @@ function renderGroupsForSection(sectionId) {
             : (group.customer_notification ? [group.customer_notification] : []);
 
         return `
-            <div class="item-card" onclick="showGroupDetail(${group.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showGroupDetail('${group.id}')" style="cursor: pointer;">
                 <h3>${displayName}</h3>
                 <div class="item-details">
                     ${comments ? `<div class="detail-item"><strong>Comments:</strong> ${comments}</div>` : ''}
@@ -1188,8 +1188,8 @@ function renderTreesForGroup(groupId) {
                     <div class="detail-item"><strong>Recorded:</strong> ${new Date(tree.created_at).toLocaleString()}</div>
                 </div>
                 <div class="item-actions">
-                    <button class="btn btn-secondary" onclick="editTree(${tree.id})">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteTree(${tree.id})">Delete</button>
+                    <button class="btn btn-secondary" onclick="editTree('${tree.id}')">Edit</button>
+                    <button class="btn btn-danger" onclick="deleteTree('${tree.id}')">Delete</button>
                 </div>
             </div>
         `;
@@ -1319,7 +1319,7 @@ function renderCrewProjectsList() {
         const totalGroups = projectGroups.length;
 
         return `
-            <div class="item-card" onclick="showCrewSections(${project.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showCrewSections('${project.id}')" style="cursor: pointer;">
                 <h3>${project.name}</h3>
                 <div class="item-details">
                     <div class="detail-item"><strong>Work Type:</strong> ${project.work_type}</div>
@@ -1363,7 +1363,7 @@ function renderCrewSectionsList(projectId) {
         const totalGroups = sectionGroups.length;
 
         return `
-            <div class="item-card" onclick="showCrewGroups(${section.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showCrewGroups('${section.id}')" style="cursor: pointer;">
                 <h3>${section.name}</h3>
                 <div class="item-details">
                     ${section.description ? `<div class="detail-item"><strong>Description:</strong> ${section.description}</div>` : ''}
@@ -1413,7 +1413,7 @@ function renderCrewGroupsList(sectionId) {
             : '<span class="badge" style="background: #6ba3ff; color: white;">IN PROGRESS</span>';
 
         return `
-            <div class="item-card" onclick="showCrewWork(${group.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showCrewWork('${group.id}')" style="cursor: pointer;">
                 <h3>${displayName} ${statusBadge}</h3>
                 <div class="item-details">
                     <div class="detail-item"><strong>Trees:</strong> ${completedTrees} / ${totalTrees} completed</div>
@@ -1488,10 +1488,10 @@ function renderCrewTreesList(groupId) {
                 </div>
                 <div class="item-actions">
                     ${!isCompleted ?
-                        `<button class="btn btn-primary" onclick="markTreeCompleted(${tree.id})">Mark as Completed</button>` :
+                        `<button class="btn btn-primary" onclick="markTreeCompleted('${tree.id}')">Mark as Completed</button>` :
                         `<div style="display: flex; gap: 10px; align-items: center;">
                             <span style="color: #22cc22; font-weight: bold;">Completed</span>
-                            <button class="btn btn-secondary" onclick="reopenTree(${tree.id})">Reopen Tree</button>
+                            <button class="btn btn-secondary" onclick="reopenTree('${tree.id}')">Reopen Tree</button>
                         </div>`
                     }
                 </div>
@@ -1670,7 +1670,7 @@ function renderAuditProjectsList() {
         let statusColor = percentage === 100 ? '#22cc22' : percentage > 0 ? '#ff9933' : '#cccccc';
 
         return `
-            <div class="item-card" onclick="showAuditSections(${project.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showAuditSections('${project.id}')" style="cursor: pointer;">
                 <h3>${project.name}</h3>
                 <div class="item-details">
                     <div class="detail-item"><strong>Work Type:</strong> ${project.work_type}</div>
@@ -1715,7 +1715,7 @@ function renderAuditSectionsList(projectId) {
         let statusColor = percentage === 100 ? '#22cc22' : percentage > 0 ? '#ff9933' : '#cccccc';
 
         return `
-            <div class="item-card" onclick="showAuditGroups(${section.id})" style="cursor: pointer;">
+            <div class="item-card" onclick="showAuditGroups('${section.id}')" style="cursor: pointer;">
                 <h3>${section.name}</h3>
                 <div class="item-details">
                     ${section.description ? `<div class="detail-item"><strong>Description:</strong> ${section.description}</div>` : ''}
