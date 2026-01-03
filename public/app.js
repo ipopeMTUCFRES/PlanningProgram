@@ -194,7 +194,15 @@ async function handleProjectSubmit(e) {
 
         if (response.ok) {
             const result = await response.json();
-            await loadProjects();
+
+            // Optimistic update - update local state immediately
+            if (projectId) {
+                const index = projects.findIndex(p => p.id == projectId);
+                if (index !== -1) projects[index] = result;
+            } else {
+                projects.push(result);
+            }
+            renderProjects();
 
             if (!projectId) {
                 showProjectDetail(result.id);
@@ -220,10 +228,16 @@ async function handleDeleteProject() {
     try {
         const response = await fetch(`/api/projects/${currentProjectId}`, { method: 'DELETE' });
         if (response.ok) {
-            await loadProjects();
-            await loadSections();
-            await loadGroups();
-            await loadTrees();
+            // Optimistic update - remove from local state immediately
+            projects = projects.filter(p => p.id !== currentProjectId);
+            sections = sections.filter(s => s.project_id !== currentProjectId);
+
+            // Remove all groups and trees for this project's sections
+            const projectSectionIds = sections.filter(s => s.project_id === currentProjectId).map(s => s.id);
+            groups = groups.filter(g => !projectSectionIds.includes(g.section_id));
+            const projectGroupIds = groups.filter(g => projectSectionIds.includes(g.section_id)).map(g => g.id);
+            trees = trees.filter(t => !projectGroupIds.includes(t.group_id));
+
             showProjectsList();
             alert('Project deleted successfully');
         }
@@ -302,7 +316,14 @@ async function handleSectionSubmit(e) {
 
         if (response.ok) {
             const result = await response.json();
-            await loadSections();
+
+            // Optimistic update - update local state immediately
+            if (sectionId) {
+                const index = sections.findIndex(s => s.id == sectionId);
+                if (index !== -1) sections[index] = result;
+            } else {
+                sections.push(result);
+            }
 
             if (!sectionId) {
                 showSectionDetail(result.id);
@@ -328,9 +349,14 @@ async function handleDeleteSection() {
     try {
         const response = await fetch(`/api/sections/${currentSectionId}`, { method: 'DELETE' });
         if (response.ok) {
-            await loadSections();
-            await loadGroups();
-            await loadTrees();
+            // Optimistic update - remove from local state immediately
+            sections = sections.filter(s => s.id !== currentSectionId);
+
+            // Remove all groups and trees for this section
+            const sectionGroupIds = groups.filter(g => g.section_id === currentSectionId).map(g => g.id);
+            groups = groups.filter(g => g.section_id !== currentSectionId);
+            trees = trees.filter(t => !sectionGroupIds.includes(t.group_id));
+
             showProjectDetail(currentProjectId);
             alert('Section deleted successfully');
         }
@@ -502,7 +528,14 @@ async function handleGroupSubmit(e) {
 
         if (response.ok) {
             const result = await response.json();
-            await loadGroups();
+
+            // Optimistic update - update local state immediately
+            if (groupId) {
+                const index = groups.findIndex(g => g.id == groupId);
+                if (index !== -1) groups[index] = result;
+            } else {
+                groups.push(result);
+            }
 
             if (!groupId) {
                 showGroupDetail(result.id);
@@ -528,8 +561,10 @@ async function handleDeleteGroup() {
     try {
         const response = await fetch(`/api/groups/${currentGroupId}`, { method: 'DELETE' });
         if (response.ok) {
-            await loadGroups();
-            await loadTrees();
+            // Optimistic update - remove from local state immediately
+            groups = groups.filter(g => g.id !== currentGroupId);
+            trees = trees.filter(t => t.group_id !== currentGroupId);
+
             showSectionDetail(currentSectionId);
             alert('Group deleted successfully');
         }
@@ -688,7 +723,8 @@ async function deleteTree(id) {
     try {
         const response = await fetch(`/api/trees/${id}`, { method: 'DELETE' });
         if (response.ok) {
-            await loadTrees();
+            // Optimistic update - remove from local state immediately
+            trees = trees.filter(t => t.id !== id);
             renderTreesForGroup(currentGroupId);
             initializeTreeMap(currentGroupId);
         }
