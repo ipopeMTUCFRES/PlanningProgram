@@ -38,8 +38,12 @@
                     <div id="offlineIndicator" class="offline-indicator hidden">
                         <span class="status-dot"></span>
                         <span class="status-text">Offline</span>
-                        <span id="pendingCount" class="pending-count hidden">0 pending</span>
                     </div>
+                    <button id="syncButton" class="btn btn-sync hidden">
+                        <span class="sync-icon">⬆</span>
+                        <span id="syncBadge" class="sync-badge">0</span>
+                        <span class="sync-text">Sync</span>
+                    </button>
                     <div class="mode-selector">
                         <button id="entryModeBtn" class="btn mode-btn active">Entry Mode</button>
                         <button id="crewModeBtn" class="btn mode-btn">Crew Mode</button>
@@ -486,6 +490,7 @@
     </div>
 
     <script src="offline-db.js"></script>
+    <script src="sync-manager.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

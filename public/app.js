@@ -34,11 +34,11 @@ function registerServiceWorker() {
     }
 }
 
-// Initialize offline support and network monitoring
+// Initialize offline-first support
 function initializeOfflineSupport() {
     const offlineIndicator = document.getElementById('offlineIndicator');
     const statusText = offlineIndicator.querySelector('.status-text');
-    const pendingCount = document.getElementById('pendingCount');
+    const syncButton = document.getElementById('syncButton');
 
     // Update UI based on online/offline status
     function updateOnlineStatus() {
@@ -47,72 +47,10 @@ function initializeOfflineSupport() {
         if (isOnline) {
             offlineIndicator.classList.add('hidden');
             statusText.textContent = 'Online';
-            // Try to sync any pending operations
-            syncPendingOperations();
         } else {
             offlineIndicator.classList.remove('hidden');
             statusText.textContent = 'Offline';
         }
-
-        updatePendingCount();
-    }
-
-    // Update pending operations count
-    async function updatePendingCount() {
-        try {
-            const count = await offlineDB.getPendingCount();
-            if (count > 0) {
-                pendingCount.textContent = `${count} pending`;
-                pendingCount.classList.remove('hidden');
-            } else {
-                pendingCount.classList.add('hidden');
-            }
-        } catch (error) {
-            console.error('Error updating pending count:', error);
-        }
-    }
-
-    // Sync pending operations when online
-    async function syncPendingOperations() {
-        if (!isOnline) return;
-
-        try {
-            const pending = await offlineDB.getPendingOperations();
-
-            for (const operation of pending) {
-                try {
-                    await executeOperation(operation);
-                    await offlineDB.removePendingOperation(operation.id);
-                    console.log('Synced operation:', operation);
-                } catch (error) {
-                    console.error('Failed to sync operation:', operation, error);
-                    // Keep the operation in queue for retry
-                }
-            }
-
-            updatePendingCount();
-        } catch (error) {
-            console.error('Error syncing pending operations:', error);
-        }
-    }
-
-    // Execute a pending operation
-    async function executeOperation(operation) {
-        const { type, entity, data, method, url } = operation;
-
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: method !== 'GET' ? JSON.stringify(data) : undefined
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to sync ${entity}: ${response.statusText}`);
-        }
-
-        return await response.json();
     }
 
     // Listen for online/offline events
@@ -122,8 +60,18 @@ function initializeOfflineSupport() {
     // Initial status check
     updateOnlineStatus();
 
-    // Periodically check pending count
-    setInterval(updatePendingCount, 5000);
+    // Set up sync button
+    syncButton.addEventListener('click', () => {
+        syncManager.syncToServer();
+    });
+
+    // Update sync badge periodically
+    setInterval(() => {
+        syncManager.updateSyncBadge();
+    }, 5000);
+
+    // Initial badge update
+    syncManager.updateSyncBadge();
 }
 
 function initializeApp() {
@@ -278,78 +226,60 @@ async function handleProjectSubmit(e) {
     };
 
     const projectId = document.getElementById('projectId').value;
-    const url = projectId ? `/api/projects/${projectId}` : '/api/projects';
-    const method = projectId ? 'PUT' : 'POST';
-
-    // If offline, queue the operation
-    if (!isOnline) {
-        try {
-            await offlineDB.addPendingOperation({
-                type: projectId ? 'update' : 'create',
-                entity: 'project',
-                data: projectData,
-                method: method,
-                url: url
-            });
-
-            alert('You are offline. Project will be saved when connection is restored.');
-            return;
-        } catch (error) {
-            console.error('Error queuing offline operation:', error);
-            alert('Error saving offline. Please try again.');
-            return;
-        }
-    }
 
     try {
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(projectData)
-        });
+        let savedProject;
 
-        if (response.ok) {
-            const result = await response.json();
+        if (projectId) {
+            // UPDATE existing project
+            const existing = await offlineDB.getProject(projectId);
 
-            // Optimistic update - update local state immediately
-            if (projectId) {
-                const index = projects.findIndex(p => p.id == projectId);
-                if (index !== -1) projects[index] = result;
-            } else {
-                projects.push(result);
-            }
-            renderProjects();
+            savedProject = {
+                ...existing,
+                ...projectData,
+                sync_status: offlineDB.isLocalId(projectId) ? 'local_only' : 'modified',
+                modified_at: Date.now()
+            };
 
-            if (!projectId) {
-                showProjectDetail(result.id);
-            } else {
-                showProjectDetail(projectId);
-            }
+            await offlineDB.saveProject(savedProject);
 
-            alert(projectId ? 'Project updated successfully!' : 'Project created successfully! You can now add groups to this project.');
+            // Update in array
+            const index = projects.findIndex(p => p.id == projectId);
+            if (index !== -1) projects[index] = savedProject;
+
+        } else {
+            // CREATE new project
+            const localId = offlineDB.generateLocalId('project');
+
+            savedProject = {
+                id: localId,
+                ...projectData,
+                sync_status: 'local_only',
+                created_at: new Date().toISOString(),
+                modified_at: Date.now()
+            };
+
+            await offlineDB.saveProject(savedProject);
+            projects.push(savedProject);
         }
+
+        // Update UI
+        renderProjects();
+
+        if (!projectId) {
+            showProjectDetail(savedProject.id);
+        } else {
+            showProjectDetail(projectId);
+        }
+
+        // Update sync badge
+        await syncManager.updateSyncBadge();
+
+        alert(projectId ? 'Project updated locally!' : 'Project created locally! Click Sync to upload to server.');
+
     } catch (error) {
         console.error('Error saving project:', error);
-
-        // If fetch failed, might be offline - queue it
-        if (!navigator.onLine) {
-            try {
-                await offlineDB.addPendingOperation({
-                    type: projectId ? 'update' : 'create',
-                    entity: 'project',
-                    data: projectData,
-                    method: method,
-                    url: url
-                });
-
-                alert('Connection lost. Project will be saved when connection is restored.');
-            } catch (queueError) {
-                console.error('Error queuing operation:', queueError);
-                alert('Error saving project');
-            }
-        } else {
-            alert('Error saving project');
-        }
+        alert('Error saving project: ' + error.message);
     }
 }
 
@@ -440,77 +370,55 @@ async function handleSectionSubmit(e) {
     };
 
     const sectionId = document.getElementById('sectionId').value;
-    const url = sectionId ? `/api/sections/${sectionId}` : '/api/sections';
-    const method = sectionId ? 'PUT' : 'POST';
-
-    // If offline, queue the operation
-    if (!isOnline) {
-        try {
-            await offlineDB.addPendingOperation({
-                type: sectionId ? 'update' : 'create',
-                entity: 'section',
-                data: sectionData,
-                method: method,
-                url: url
-            });
-
-            alert('You are offline. Section will be saved when connection is restored.');
-            return;
-        } catch (error) {
-            console.error('Error queuing offline operation:', error);
-            alert('Error saving offline. Please try again.');
-            return;
-        }
-    }
 
     try {
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(sectionData)
-        });
+        let savedSection;
 
-        if (response.ok) {
-            const result = await response.json();
+        if (sectionId) {
+            // UPDATE
+            const existing = await offlineDB.getSection(sectionId);
 
-            // Optimistic update - update local state immediately
-            if (sectionId) {
-                const index = sections.findIndex(s => s.id == sectionId);
-                if (index !== -1) sections[index] = result;
-            } else {
-                sections.push(result);
-            }
+            savedSection = {
+                ...existing,
+                ...sectionData,
+                sync_status: offlineDB.isLocalId(sectionId) ? 'local_only' : 'modified',
+                modified_at: Date.now()
+            };
 
-            if (!sectionId) {
-                showSectionDetail(result.id);
-            } else {
-                showSectionDetail(sectionId);
-            }
+            await offlineDB.saveSection(savedSection);
 
-            alert(sectionId ? 'Section updated successfully!' : 'Section created successfully! You can now add groups to this section.');
+            const index = sections.findIndex(s => s.id == sectionId);
+            if (index !== -1) sections[index] = savedSection;
+
+        } else {
+            // CREATE
+            const localId = offlineDB.generateLocalId('section');
+
+            savedSection = {
+                id: localId,
+                ...sectionData,
+                sync_status: 'local_only',
+                created_at: new Date().toISOString(),
+                modified_at: Date.now()
+            };
+
+            await offlineDB.saveSection(savedSection);
+            sections.push(savedSection);
         }
+
+        if (!sectionId) {
+            showSectionDetail(savedSection.id);
+        } else {
+            showSectionDetail(sectionId);
+        }
+
+        await syncManager.updateSyncBadge();
+
+        alert(sectionId ? 'Section updated locally!' : 'Section created locally! Click Sync to upload to server.');
+
     } catch (error) {
         console.error('Error saving section:', error);
-
-        // If fetch failed, might be offline - queue it
-        if (!navigator.onLine) {
-            try {
-                await offlineDB.addPendingOperation({
-                    type: sectionId ? 'update' : 'create',
-                    entity: 'section',
-                    data: sectionData,
-                    method: method,
-                    url: url
-                });
-
-                alert('Connection lost. Section will be saved when connection is restored.');
-            } catch (queueError) {
-                console.error('Error queuing operation:', queueError);
-                alert('Error saving section');
-            }
-        } else {
-            alert('Error saving section');
-        }
+        alert('Error saving section: ' + error.message);
     }
 }
 
@@ -712,77 +620,55 @@ async function handleGroupSubmit(e) {
     };
 
     const groupId = document.getElementById('groupId').value;
-    const url = groupId ? `/api/groups/${groupId}` : '/api/groups';
-    const method = groupId ? 'PUT' : 'POST';
-
-    // If offline, queue the operation
-    if (!isOnline) {
-        try {
-            await offlineDB.addPendingOperation({
-                type: groupId ? 'update' : 'create',
-                entity: 'group',
-                data: groupData,
-                method: method,
-                url: url
-            });
-
-            alert('You are offline. Group will be saved when connection is restored.');
-            return;
-        } catch (error) {
-            console.error('Error queuing offline operation:', error);
-            alert('Error saving offline. Please try again.');
-            return;
-        }
-    }
 
     try {
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(groupData)
-        });
+        let savedGroup;
 
-        if (response.ok) {
-            const result = await response.json();
+        if (groupId) {
+            // UPDATE
+            const existing = await offlineDB.getGroup(groupId);
 
-            // Optimistic update - update local state immediately
-            if (groupId) {
-                const index = groups.findIndex(g => g.id == groupId);
-                if (index !== -1) groups[index] = result;
-            } else {
-                groups.push(result);
-            }
+            savedGroup = {
+                ...existing,
+                ...groupData,
+                sync_status: offlineDB.isLocalId(groupId) ? 'local_only' : 'modified',
+                modified_at: Date.now()
+            };
 
-            if (!groupId) {
-                showGroupDetail(result.id);
-            } else {
-                showGroupDetail(groupId);
-            }
+            await offlineDB.saveGroup(savedGroup);
 
-            alert(groupId ? 'Group updated successfully!' : 'Group created successfully! You can now add trees to this group.');
+            const index = groups.findIndex(g => g.id == groupId);
+            if (index !== -1) groups[index] = savedGroup;
+
+        } else {
+            // CREATE
+            const localId = offlineDB.generateLocalId('group');
+
+            savedGroup = {
+                id: localId,
+                ...groupData,
+                sync_status: 'local_only',
+                created_at: new Date().toISOString(),
+                modified_at: Date.now()
+            };
+
+            await offlineDB.saveGroup(savedGroup);
+            groups.push(savedGroup);
         }
+
+        if (!groupId) {
+            showGroupDetail(savedGroup.id);
+        } else {
+            showGroupDetail(groupId);
+        }
+
+        await syncManager.updateSyncBadge();
+
+        alert(groupId ? 'Group updated locally!' : 'Group created locally! Click Sync to upload to server.');
+
     } catch (error) {
         console.error('Error saving group:', error);
-
-        // If fetch failed, might be offline - queue it
-        if (!navigator.onLine) {
-            try {
-                await offlineDB.addPendingOperation({
-                    type: groupId ? 'update' : 'create',
-                    entity: 'group',
-                    data: groupData,
-                    method: method,
-                    url: url
-                });
-
-                alert('Connection lost. Group will be saved when connection is restored.');
-            } catch (queueError) {
-                console.error('Error queuing operation:', queueError);
-                alert('Error saving group');
-            }
-        } else {
-            alert('Error saving group');
-        }
+        alert('Error saving group: ' + error.message);
     }
 }
 
@@ -901,74 +787,53 @@ async function handleTreeSubmit(e) {
     };
 
     const treeId = document.getElementById('treeId').value;
-    const url = treeId ? `/api/trees/${treeId}` : '/api/trees';
-    const method = treeId ? 'PUT' : 'POST';
-
-    // If offline, queue the operation
-    if (!isOnline) {
-        try {
-            await offlineDB.addPendingOperation({
-                type: treeId ? 'update' : 'create',
-                entity: 'tree',
-                data: treeData,
-                method: method,
-                url: url
-            });
-
-            alert('You are offline. Tree will be saved when connection is restored.');
-            return;
-        } catch (error) {
-            console.error('Error queuing offline operation:', error);
-            alert('Error saving offline. Please try again.');
-            return;
-        }
-    }
 
     try {
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(treeData)
-        });
+        let savedTree;
 
-        if (response.ok) {
-            const savedTree = await response.json();
+        if (treeId) {
+            // UPDATE
+            const existing = await offlineDB.getTree(treeId);
 
-            // Update locally for instant feedback
-            if (treeId) {
-                const index = trees.findIndex(t => t.id == treeId);
-                if (index !== -1) trees[index] = savedTree;
-            } else {
-                trees.push(savedTree);
-            }
+            savedTree = {
+                ...existing,
+                ...treeData,
+                sync_status: offlineDB.isLocalId(treeId) ? 'local_only' : 'modified',
+                modified_at: Date.now()
+            };
 
-            resetTreeForm();
-            renderTreesForGroup(currentGroupId);
-            initializeTreeMap(currentGroupId);
-            // Removed alert for faster UX
+            await offlineDB.saveTree(savedTree);
+
+            const index = trees.findIndex(t => t.id == treeId);
+            if (index !== -1) trees[index] = savedTree;
+
+        } else {
+            // CREATE
+            const localId = offlineDB.generateLocalId('tree');
+
+            savedTree = {
+                id: localId,
+                ...treeData,
+                sync_status: 'local_only',
+                created_at: new Date().toISOString(),
+                modified_at: Date.now()
+            };
+
+            await offlineDB.saveTree(savedTree);
+            trees.push(savedTree);
         }
+
+        resetTreeForm();
+        renderTreesForGroup(currentGroupId);
+        initializeTreeMap(currentGroupId);
+
+        await syncManager.updateSyncBadge();
+
+        // Removed alert for faster UX - tree saved silently
+
     } catch (error) {
         console.error('Error saving tree:', error);
-
-        // If fetch failed, might be offline - queue it
-        if (!navigator.onLine) {
-            try {
-                await offlineDB.addPendingOperation({
-                    type: treeId ? 'update' : 'create',
-                    entity: 'tree',
-                    data: treeData,
-                    method: method,
-                    url: url
-                });
-
-                alert('Connection lost. Tree will be saved when connection is restored.');
-            } catch (queueError) {
-                console.error('Error queuing operation:', queueError);
-                alert('Error saving tree');
-            }
-        } else {
-            alert('Error saving tree');
-        }
+        alert('Error saving tree: ' + error.message);
     }
 }
 
@@ -1029,11 +894,35 @@ function resetTreeForm() {
 }
 
 // DATA LOADING
+// Load all data from local IndexedDB
+async function loadAllDataFromLocal() {
+    try {
+        projects = await offlineDB.getAllProjects();
+        sections = await offlineDB.getAllSections();
+        groups = await offlineDB.getAllGroups();
+        trees = await offlineDB.getAllTrees();
+
+        renderProjects();
+        console.log('Loaded from local:', {projects: projects.length, sections: sections.length, groups: groups.length, trees: trees.length});
+    } catch (error) {
+        console.error('Error loading from local:', error);
+    }
+}
+
 async function loadProjects() {
     try {
-        const response = await fetch('/api/projects');
-        projects = await response.json();
+        // Load from IndexedDB first
+        projects = await offlineDB.getAllProjects();
         renderProjects();
+
+        // Then fetch from server if online and merge
+        if (navigator.onLine) {
+            const response = await fetch('/api/projects');
+            if (response.ok) {
+                const serverProjects = await response.json();
+                await mergeProjects(serverProjects);
+            }
+        }
     } catch (error) {
         console.error('Error loading projects:', error);
     }
@@ -1041,8 +930,15 @@ async function loadProjects() {
 
 async function loadSections() {
     try {
-        const response = await fetch('/api/sections');
-        sections = await response.json();
+        sections = await offlineDB.getAllSections();
+
+        if (navigator.onLine) {
+            const response = await fetch('/api/sections');
+            if (response.ok) {
+                const serverSections = await response.json();
+                await mergeSections(serverSections);
+            }
+        }
     } catch (error) {
         console.error('Error loading sections:', error);
     }
@@ -1050,8 +946,15 @@ async function loadSections() {
 
 async function loadGroups() {
     try {
-        const response = await fetch('/api/groups');
-        groups = await response.json();
+        groups = await offlineDB.getAllGroups();
+
+        if (navigator.onLine) {
+            const response = await fetch('/api/groups');
+            if (response.ok) {
+                const serverGroups = await response.json();
+                await mergeGroups(serverGroups);
+            }
+        }
     } catch (error) {
         console.error('Error loading groups:', error);
     }
@@ -1059,11 +962,79 @@ async function loadGroups() {
 
 async function loadTrees() {
     try {
-        const response = await fetch('/api/trees');
-        trees = await response.json();
+        trees = await offlineDB.getAllTrees();
+
+        if (navigator.onLine) {
+            const response = await fetch('/api/trees');
+            if (response.ok) {
+                const serverTrees = await response.json();
+                await mergeTrees(serverTrees);
+            }
+        }
     } catch (error) {
         console.error('Error loading trees:', error);
     }
+}
+
+// Merge server data with local data
+async function mergeProjects(serverProjects) {
+    for (const serverProject of serverProjects) {
+        const local = await offlineDB.getProject(serverProject.id);
+
+        if (!local) {
+            // New from server
+            await offlineDB.saveProject({...serverProject, sync_status: 'synced'});
+        } else if (local.sync_status === 'synced') {
+            // Update if already synced
+            await offlineDB.saveProject({...serverProject, sync_status: 'synced'});
+        }
+        // If local_only or modified, keep local version
+    }
+
+    projects = await offlineDB.getAllProjects();
+    renderProjects();
+}
+
+async function mergeSections(serverSections) {
+    for (const serverSection of serverSections) {
+        const local = await offlineDB.getSection(serverSection.id);
+
+        if (!local) {
+            await offlineDB.saveSection({...serverSection, sync_status: 'synced'});
+        } else if (local.sync_status === 'synced') {
+            await offlineDB.saveSection({...serverSection, sync_status: 'synced'});
+        }
+    }
+
+    sections = await offlineDB.getAllSections();
+}
+
+async function mergeGroups(serverGroups) {
+    for (const serverGroup of serverGroups) {
+        const local = await offlineDB.getGroup(serverGroup.id);
+
+        if (!local) {
+            await offlineDB.saveGroup({...serverGroup, sync_status: 'synced'});
+        } else if (local.sync_status === 'synced') {
+            await offlineDB.saveGroup({...serverGroup, sync_status: 'synced'});
+        }
+    }
+
+    groups = await offlineDB.getAllGroups();
+}
+
+async function mergeTrees(serverTrees) {
+    for (const serverTree of serverTrees) {
+        const local = await offlineDB.getTree(serverTree.id);
+
+        if (!local) {
+            await offlineDB.saveTree({...serverTree, sync_status: 'synced'});
+        } else if (local.sync_status === 'synced') {
+            await offlineDB.saveTree({...serverTree, sync_status: 'synced'});
+        }
+    }
+
+    trees = await offlineDB.getAllTrees();
 }
 
 // RENDERING
