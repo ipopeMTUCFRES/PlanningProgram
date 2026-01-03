@@ -40,11 +40,7 @@
                         <button id="crewModeBtn" class="btn mode-btn">Crew Mode</button>
                         <button id="auditModeBtn" class="btn mode-btn">Audit Mode</button>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button id="uploadExcelBtn" class="btn btn-secondary">📁 Upload Excel</button>
-                        <input type="file" id="excelFileInput" accept=".csv,.xlsx,.xls" style="display: none;">
-                        <button id="themeToggle" class="btn btn-secondary">🌙 Dark Mode</button>
-                    </div>
+                    <button id="themeToggle" class="btn btn-secondary">🌙 Dark Mode</button>
                 </div>
             </div>
         </header>
@@ -76,6 +72,13 @@
                             <label for="projectName">Project Name *</label>
                             <input type="text" id="projectName" required placeholder="e.g., 2024 Spring Maintenance">
                         </div>
+                        <div class="form-group">
+                            <label for="wdNumber">WD Number (Circuit) *</label>
+                            <input type="text" id="wdNumber" required placeholder="e.g., WD-123">
+                        </div>
+                    </div>
+
+                    <div class="form-row two-col">
                         <div class="form-group">
                             <label for="workType">Work Type *</label>
                             <select id="workType" required>
@@ -121,6 +124,10 @@
                             <label for="sectionName">Section Name *</label>
                             <input type="text" id="sectionName" required placeholder="e.g., North Area, Phase 1">
                         </div>
+                        <div class="form-group">
+                            <label for="sectionNumber">Section Number *</label>
+                            <input type="text" id="sectionNumber" required placeholder="e.g., S-1, S-2">
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -157,24 +164,15 @@
                     <input type="hidden" id="groupId">
                     <input type="hidden" id="groupName">
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="circuitNumber">Circuit Number *</label>
-                            <input type="text" id="circuitNumber" required placeholder="e.g., 1234-56" pattern="\d{4}-\d{2}" title="Format: 4 digits, dash, 2 digits (e.g., 1234-56)">
-                        </div>
-                        <div class="form-group">
-                            <label for="sectionNumber">Section Number *</label>
-                            <input type="text" id="sectionNumber" required placeholder="e.g., A or 1">
-                        </div>
+                    <div class="form-row two-col">
                         <div class="form-group">
                             <label for="idNumber">ID Number *</label>
-                            <input type="number" id="idNumber" required placeholder="e.g., 001">
+                            <input type="text" id="idNumber" required placeholder="e.g., 001, 002">
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="groupAddress">Address</label>
-                        <input type="text" id="groupAddress" placeholder="Enter group address or location">
+                        <div class="form-group">
+                            <label for="groupAddress">Address</label>
+                            <input type="text" id="groupAddress" placeholder="Enter group address or location">
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -234,6 +232,12 @@
                             </label>
                             <label class="checkbox-label">
                                 <input type="checkbox" name="customerNotification" value="Postcard"> Postcard
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="customerNotification" value="CE Notified"> CE Notified
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="customerNotification" value="Refusal"> Refusal
                             </label>
                         </div>
                     </div>
@@ -456,8 +460,22 @@
             <section class="list-section">
                 <div class="section-header">
                     <h2 id="auditGroupsListTitle">Groups Status</h2>
+                    <button id="viewRefusalsBtn" class="btn btn-secondary">View All Refusals</button>
                 </div>
                 <div id="auditGroupsList" class="items-list"></div>
+            </section>
+        </main>
+
+        <!-- Audit Mode - Refusals View -->
+        <main id="refusalsView" class="view">
+            <div class="back-button-container">
+                <button id="backFromRefusalsBtn" class="btn btn-secondary">← Back to Audit</button>
+            </div>
+            <section class="list-section">
+                <div class="section-header">
+                    <h2 id="refusalsTitle">Refusals for Project</h2>
+                </div>
+                <div id="refusalsList" class="items-list"></div>
             </section>
         </main>
     </div>
