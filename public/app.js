@@ -200,7 +200,7 @@ function showProjectDetail(projectId) {
     document.getElementById('groupDetailView').classList.remove('active');
 
     if (projectId) {
-        const project = projects.find(p => p.id === projectId);
+        const project = projects.find(p => p.id == projectId);
         if (project) {
             document.getElementById('projectDetailTitle').textContent = `Edit Project: ${project.name}`;
             populateProjectForm(project);
@@ -336,7 +336,7 @@ function showSectionDetail(sectionId) {
     document.getElementById('groupDetailView').classList.remove('active');
 
     if (sectionId) {
-        const section = sections.find(s => s.id === sectionId);
+        const section = sections.find(s => s.id == sectionId);
         if (section) {
             document.getElementById('sectionDetailTitle').textContent = `Edit Section: ${section.name}`;
             populateSectionForm(section);
@@ -469,7 +469,7 @@ function exportSectionToExcel() {
         return;
     }
 
-    const section = sections.find(s => s.id === currentSectionId);
+    const section = sections.find(s => s.id == currentSectionId);
     if (!section) return;
 
     const project = projects.find(p => p.id === section.project_id);
@@ -545,7 +545,7 @@ function showGroupDetail(groupId) {
     document.getElementById('groupDetailView').classList.add('active');
 
     if (groupId) {
-        const group = groups.find(g => g.id === groupId);
+        const group = groups.find(g => g.id == groupId);
         if (group) {
             document.getElementById('groupDetailTitle').textContent = `Edit Group: ${group.name || group.circuit_number}`;
             populateGroupForm(group);
@@ -579,7 +579,7 @@ async function handleGroupSubmit(e) {
     }
 
     // Get WD Number from parent project and Section Number from parent section
-    const section = sections.find(s => s.id === currentSectionId);
+    const section = sections.find(s => s.id == currentSectionId);
     if (!section) {
         alert('Error: Section not found');
         return;
@@ -1137,7 +1137,7 @@ function renderProjects() {
 
 function renderSectionsForProject(projectId) {
     const container = document.getElementById('sectionsList');
-    const projectSections = sections.filter(s => s.project_id === projectId);
+    const projectSections = sections.filter(s => s.project_id == projectId);
 
     if (projectSections.length === 0) {
         container.innerHTML = '<div class="empty-state">No sections created yet for this project</div>';
@@ -1188,7 +1188,7 @@ function renderSectionsForProject(projectId) {
 
 function renderGroupsForSection(sectionId) {
     const container = document.getElementById('groupsList');
-    const sectionGroups = groups.filter(g => g.section_id === sectionId);
+    const sectionGroups = groups.filter(g => g.section_id == sectionId);
 
     if (sectionGroups.length === 0) {
         container.innerHTML = '<div class="empty-state">No groups created yet for this section</div>';
@@ -1239,7 +1239,7 @@ function getTreeNumberInGroup(tree) {
 
 function renderTreesForGroup(groupId) {
     const container = document.getElementById('treesList');
-    const groupTrees = trees.filter(t => t.group_id === groupId);
+    const groupTrees = trees.filter(t => t.group_id == groupId);
 
     if (groupTrees.length === 0) {
         container.innerHTML = '<div class="empty-state">No trees recorded for this group yet</div>';
@@ -1286,7 +1286,7 @@ function renderTreesForGroup(groupId) {
 
 // MAP FUNCTIONS
 function initializeTreeMap(groupId) {
-    const groupTrees = trees.filter(t => t.group_id === groupId);
+    const groupTrees = trees.filter(t => t.group_id == groupId);
 
     // Remove existing map if present
     if (treeMap) {
@@ -1428,7 +1428,7 @@ function showCrewSections(projectId) {
     document.getElementById('crewGroupsView').classList.remove('active');
     document.getElementById('crewWorkView').classList.remove('active');
 
-    const project = projects.find(p => p.id === projectId);
+    const project = projects.find(p => p.id == projectId);
     if (project) {
         document.getElementById('crewSectionsTitle').textContent = `Sections in ${project.name}`;
     }
@@ -1438,7 +1438,7 @@ function showCrewSections(projectId) {
 
 function renderCrewSectionsList(projectId) {
     const container = document.getElementById('crewSectionsList');
-    const projectSections = sections.filter(s => s.project_id === projectId);
+    const projectSections = sections.filter(s => s.project_id == projectId);
 
     if (projectSections.length === 0) {
         container.innerHTML = '<div class="empty-state">No sections available</div>';
@@ -1470,7 +1470,7 @@ function showCrewGroups(sectionId) {
     document.getElementById('crewGroupsView').classList.add('active');
     document.getElementById('crewWorkView').classList.remove('active');
 
-    const section = sections.find(s => s.id === sectionId);
+    const section = sections.find(s => s.id == sectionId);
     if (section) {
         document.getElementById('crewGroupsTitle').textContent = `Groups in ${section.name}`;
     }
@@ -1480,7 +1480,7 @@ function showCrewGroups(sectionId) {
 
 function renderCrewGroupsList(sectionId) {
     const container = document.getElementById('crewGroupsList');
-    const sectionGroups = groups.filter(g => g.section_id === sectionId);
+    const sectionGroups = groups.filter(g => g.section_id == sectionId);
 
     if (sectionGroups.length === 0) {
         container.innerHTML = '<div class="empty-state">No groups available in this section</div>';
@@ -1515,7 +1515,7 @@ function renderCrewGroupsList(sectionId) {
 
 function showCrewWork(groupId) {
     currentGroupId = groupId;
-    const group = groups.find(g => g.id === groupId);
+    const group = groups.find(g => g.id == groupId);
 
     if (!group) return;
 
@@ -1544,7 +1544,7 @@ function showCrewWork(groupId) {
 
 function renderCrewTreesList(groupId) {
     const container = document.getElementById('crewTreesList');
-    const groupTrees = trees.filter(t => t.group_id === groupId);
+    const groupTrees = trees.filter(t => t.group_id == groupId);
 
     if (groupTrees.length === 0) {
         container.innerHTML = '<div class="empty-state">No trees in this group</div>';
@@ -1590,7 +1590,7 @@ function renderCrewTreesList(groupId) {
 
 async function markTreeCompleted(treeId) {
     try {
-        const tree = trees.find(t => t.id === treeId);
+        const tree = trees.find(t => t.id == treeId);
         if (!tree) return;
 
         // Update locally first for instant UI feedback
@@ -1613,7 +1613,7 @@ async function markTreeCompleted(treeId) {
     } catch (error) {
         console.error('Error marking tree as completed:', error);
         // Revert on error
-        const tree = trees.find(t => t.id === treeId);
+        const tree = trees.find(t => t.id == treeId);
         if (tree) tree.completed = false;
         renderCrewTreesList(currentGroupId);
         alert('Error marking tree as completed');
@@ -1622,7 +1622,7 @@ async function markTreeCompleted(treeId) {
 
 async function reopenTree(treeId) {
     try {
-        const tree = trees.find(t => t.id === treeId);
+        const tree = trees.find(t => t.id == treeId);
         if (!tree) return;
 
         // Update locally first for instant UI feedback
@@ -1645,7 +1645,7 @@ async function reopenTree(treeId) {
     } catch (error) {
         console.error('Error reopening tree:', error);
         // Revert on error
-        const tree = trees.find(t => t.id === treeId);
+        const tree = trees.find(t => t.id == treeId);
         if (tree) tree.completed = true;
         renderCrewTreesList(currentGroupId);
         alert('Error reopening tree');
@@ -1655,7 +1655,7 @@ async function reopenTree(treeId) {
 async function saveCrewNotes() {
     if (!currentGroupId) return;
 
-    const group = groups.find(g => g.id === currentGroupId);
+    const group = groups.find(g => g.id == currentGroupId);
     if (!group) return;
 
     const crewNotes = document.getElementById('crewNotes').value;
@@ -1693,7 +1693,7 @@ async function saveCrewNotes() {
 async function handleCompleteGroup() {
     if (!currentGroupId) return;
 
-    const group = groups.find(g => g.id === currentGroupId);
+    const group = groups.find(g => g.id == currentGroupId);
     if (!group) return;
 
     const groupTrees = trees.filter(t => t.group_id === currentGroupId);
@@ -1777,7 +1777,7 @@ function showAuditSections(projectId) {
     document.getElementById('auditSectionsView').classList.add('active');
     document.getElementById('auditGroupsView').classList.remove('active');
 
-    const project = projects.find(p => p.id === projectId);
+    const project = projects.find(p => p.id == projectId);
     if (project) {
         document.getElementById('auditSectionsTitle').textContent = `Sections in ${project.name}`;
     }
@@ -1787,7 +1787,7 @@ function showAuditSections(projectId) {
 
 function renderAuditSectionsList(projectId) {
     const container = document.getElementById('auditSectionsList');
-    const projectSections = sections.filter(s => s.project_id === projectId);
+    const projectSections = sections.filter(s => s.project_id == projectId);
 
     if (projectSections.length === 0) {
         container.innerHTML = '<div class="empty-state">No sections available</div>';
@@ -1820,7 +1820,7 @@ function showAuditGroups(sectionId) {
     document.getElementById('auditSectionsView').classList.remove('active');
     document.getElementById('auditGroupsView').classList.add('active');
 
-    const section = sections.find(s => s.id === sectionId);
+    const section = sections.find(s => s.id == sectionId);
     if (section) {
         document.getElementById('auditGroupsListTitle').textContent = `Groups in ${section.name}`;
     }
@@ -1831,7 +1831,7 @@ function showAuditGroups(sectionId) {
 
 function renderAuditGroupsList(sectionId) {
     const container = document.getElementById('auditGroupsList');
-    const sectionGroups = groups.filter(g => g.section_id === sectionId);
+    const sectionGroups = groups.filter(g => g.section_id == sectionId);
 
     if (sectionGroups.length === 0) {
         container.innerHTML = '<div class="empty-state">No groups available in this section</div>';
@@ -1881,7 +1881,7 @@ function initializeAuditMap(sectionId) {
     }
 
     // Get groups for current section with at least one tree for positioning
-    const sectionGroups = groups.filter(g => g.section_id === sectionId);
+    const sectionGroups = groups.filter(g => g.section_id == sectionId);
     const groupsWithTrees = sectionGroups.filter(g => {
         const groupTrees = trees.filter(t => t.group_id === g.id);
         return groupTrees.length > 0;
@@ -1988,7 +1988,7 @@ function showRefusals(projectId) {
     document.getElementById('auditGroupsView').classList.remove('active');
     document.getElementById('refusalsView').classList.add('active');
 
-    const project = projects.find(p => p.id === projectId);
+    const project = projects.find(p => p.id == projectId);
     if (project) {
         document.getElementById('refusalsTitle').textContent = `Refusals for ${project.name}`;
     }
@@ -2000,7 +2000,7 @@ function renderRefusals(projectId) {
     const container = document.getElementById('refusalsList');
 
     // Get all sections for this project
-    const projectSections = sections.filter(s => s.project_id === projectId);
+    const projectSections = sections.filter(s => s.project_id == projectId);
     const sectionIds = projectSections.map(s => s.id);
 
     // Get all groups for these sections that have "Refusal" in customer notification
